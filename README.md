@@ -6,4 +6,4 @@ Configure DB details in application.properties
 
 Open terminal at the folder and run the following command : mvn clean install
 
-Start the server.
+Start the server.....

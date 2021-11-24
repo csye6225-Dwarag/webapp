@@ -38,6 +38,7 @@ public class User {
     public User(){
 
     }
+
 //    @Column(name = "version_num")
 //    @Version
 //    private int version;
