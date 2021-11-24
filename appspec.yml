@@ -6,6 +6,8 @@ files:
     destination: /home/ubuntu/webapp
   - source: webapp.service
     destination: /home/ubuntu/webapp
+  - source: cloudwatch-agent.json
+    destination: /home/ubuntu/webapp
 
 hooks:
   AfterInstall:
