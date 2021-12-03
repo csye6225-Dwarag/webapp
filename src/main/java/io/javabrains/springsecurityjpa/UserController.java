@@ -1,13 +1,15 @@
 package io.javabrains.springsecurityjpa;
 
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.regions.Regions;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.model.*;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.util.IOUtils;
+import com.amazonaws.services.sns.AmazonSNS;
+import com.amazonaws.services.sns.AmazonSNSClientBuilder;
+import com.amazonaws.services.sns.model.PublishRequest;
 import io.javabrains.springsecurityjpa.models.User;
 import io.javabrains.springsecurityjpa.models.UserPic;
-import org.apache.tomcat.util.http.fileupload.FileUtils;
+import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,22 +17,19 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.timgroup.statsd.StatsDClient;
 
-import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.sql.Timestamp;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RestController
 public class UserController {
@@ -48,6 +47,15 @@ public class UserController {
 
     @Autowired
     private StatsDClient statsd;
+
+    AmazonDynamoDB dynamodbClient;
+    AmazonSNS snsClient;
+
+    Long expirationTTL;
+    String token;
+
+    @Value("${snstopic}")
+    private String snstopic;
 
     //amazonS3 = AmazonS3ClientBuilder.standard().withRegion(Regions.DEFAULT_REGION).build();
 
@@ -165,6 +173,37 @@ public class UserController {
             for (User user : users) {
                 //System.out.println("Registered user: " + newUser.toString());
                 if (user.getUserName().equals(newUser.getUserName())) {
+                    dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
+                    logger.info("DynamoDbClient built successfully");
+
+                    Instant currentInstant = Instant.now();
+                    Instant expirationInstant = currentInstant.plusSeconds(TimeUnit.MINUTES.toSeconds(Long.parseLong(System.getenv("TTL"))));
+
+                    expirationTTL = expirationInstant.getEpochSecond();
+
+                    token = UUID.randomUUID().toString();
+
+                    PutItemRequest request = new PutItemRequest();
+                    request.setTableName("csye6225-dynamo");
+                    request.setReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL);
+                    request.setReturnValues(ReturnValue.ALL_OLD);
+                    Map<String, AttributeValue> map = new HashMap<>();
+                    map.put("AccessToken", new AttributeValue(token));
+                    map.put("Email", new AttributeValue(user.getUserName()));
+                    map.put("TTL", new AttributeValue(expirationTTL.toString()));
+                    request.setItem(map);
+                    dynamodbClient.putItem(request);
+
+                    snsClient = AmazonSNSClientBuilder.defaultClient();
+
+                    JSONObject json = new JSONObject();
+                    json.put("AccessToken", token);
+                    json.put("EmailAddress",user.getUserName());
+                    json.put("MessageType","email");
+                    PublishRequest publishReq = new PublishRequest()
+                            .withTopicArn(snstopic)
+                            .withMessage(json.toString());
+                    snsClient.publish(publishReq);
                     // System.out.println("User Already exists!");
                     logger.info("**********User account already exists with this email ! **********");
                     long end = System.currentTimeMillis();
@@ -175,6 +214,8 @@ public class UserController {
             }
             BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
             newUser.setPassword(bCryptPasswordEncoder.encode(newUser.getPassword()));
+            newUser.setVerified(false);
+            newUser.setVerifiedOn(new Timestamp(System.currentTimeMillis()));
             if (saveDetail(newUser, userRepository, start, statsd)) {
                 User user = userRepository.findByUserName(newUser.getUserName())
                         .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + newUser.getUserName()));
@@ -187,6 +228,59 @@ public class UserController {
             logger.info("**********Exception while creating New User**********");
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
+    }
+
+    public ResponseEntity<String> verifyUserEmail(@RequestParam("email") String header_email, @RequestParam("token") String header_token ) {
+        try{
+            dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
+            /* Create an Object of GetItemRequest */
+            GetItemRequest request = new GetItemRequest();
+
+            /* Setting Table Name */
+            request.setTableName("csye6225-dynamo");
+
+            /* Setting Consumed Capacity */
+            request.setReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL);
+
+            /* Setting Consistency Models */
+            /* true for Strong Consistent & false for Eventually Consistent */
+            request.setConsistentRead(true);
+
+            /* Create a Map of Primary Key attributes */
+            Map<String, AttributeValue> keysMap = new HashMap<>();
+            keysMap.put("Email", new AttributeValue(header_email));
+
+            request.setKey(keysMap);
+            GetItemResult result = dynamodbClient.getItem(request);
+            AtomicReference<Boolean> check1 = new AtomicReference<>(false);
+            AtomicReference<Boolean> check2 = new AtomicReference<>(false);
+            if (result.getItem() != null) {
+                result.getItem().entrySet().stream()
+                        .forEach(e -> {
+                            if(e.getKey() == "AccessToken"){
+                                if(e.getValue().toString() == header_token){
+                                    check1.set(true);
+                                }
+                            }
+                            if(e.getKey() == "TTL"){
+                                if(Long.parseLong(e.getValue().toString()) >= Long.parseLong(String.valueOf(Instant.now()))){
+                                    check2.set(true);
+                                }
+                            }
+                        });
+
+            }
+            if(check1.get() && check2.get()){
+
+                return new ResponseEntity<>(null,HttpStatus.OK);
+            }
+            return new ResponseEntity<>(null,HttpStatus.NOT_FOUND);
+        }
+        catch (Exception e){
+            logger.info("**********Exception!**********");
+            logger.error(e.toString());
+            return new ResponseEntity<>(null,HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -233,12 +327,12 @@ public class UserController {
             FileOutputStream fos = new FileOutputStream(file);
             fos.write(binaryFile);
             fos.close();
-        Timestamp updateDate = new Timestamp(System.currentTimeMillis());
+            Timestamp updateDate = new Timestamp(System.currentTimeMillis());
 
-        User user = userRepository.findByUserName(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
-        UserPic picData = imageRepository.getUserData(user.getId().toString());
-        imageRepository.flush();
+            User user = userRepository.findByUserName(authentication.getName())
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+            UserPic picData = imageRepository.getUserData(user.getId().toString());
+            imageRepository.flush();
             //File file = convertMultiPartToFile(multipartFile);
             String fileNameWithDate = new Date().getTime() + "-" + fileName.replace(" ", "_");
 //            fileUrl = bucketURL+"/"+bucket+"/"+fileNameWithDate;
@@ -261,7 +355,7 @@ public class UserController {
                 long timeElapsed = end - start;
                 statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
                 logger.info("**********Image uploaded to S3 bucket successfully**********");
-                 picData = imageRepository.getUserData(user.getId().toString());
+                picData = imageRepository.getUserData(user.getId().toString());
                 return new ResponseEntity<>(picData, HttpStatus.CREATED);
             } else {
                 System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>> New Pic");
@@ -280,74 +374,73 @@ public class UserController {
             logger.info("**********Image uploaded to S3 bucket successfully**********");
             return new ResponseEntity<>(userPicDetails, HttpStatus.CREATED);
         }catch (Exception e){
-        e.printStackTrace();
+            e.printStackTrace();
             logger.error("error [" + e.getMessage() + "] occurred while uploading Image ");
             long end = System.currentTimeMillis();
             long timeElapsed = end - start;
             statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
             logger.info("**********Error uploading image to S3**********");
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
-    }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
-
+    }
 
     private String generateFileName() {
         return new Date().getTime() + "-image.jpeg";
     }
 
-        @GetMapping("/v1/user/self/pic")
-        public ResponseEntity getPic(Authentication authentication){
-            statsd.incrementCounter("GetUserPicAPI");
-            long start = System.currentTimeMillis();
-            try{
-                User user = userRepository.findByUserName(authentication.getName())
-                        .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
-                UserPic picData = imageRepository.findByUserId(user.getId().toString());
-                    if(picData != null) {
-                        long end = System.currentTimeMillis();
-                        long timeElapsed = end - start;
-                        statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-                        logger.info("**********Image Retrieved from S3 bucket successfully**********");
-                        return new ResponseEntity<>(picData, HttpStatus.OK);
-                    }
+    @GetMapping("/v1/user/self/pic")
+    public ResponseEntity getPic(Authentication authentication){
+        statsd.incrementCounter("GetUserPicAPI");
+        long start = System.currentTimeMillis();
+        try{
+            User user = userRepository.findByUserName(authentication.getName())
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+            UserPic picData = imageRepository.findByUserId(user.getId().toString());
+            if(picData != null) {
                 long end = System.currentTimeMillis();
                 long timeElapsed = end - start;
                 statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-                logger.info("**********Image Not Found in S3 bucket **********");
-                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+                logger.info("**********Image Retrieved from S3 bucket successfully**********");
+                return new ResponseEntity<>(picData, HttpStatus.OK);
             }
-            catch (Exception e){
-                long end = System.currentTimeMillis();
-                long timeElapsed = end - start;
-                statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-                logger.info("**********Error while Retrieving Image from S3 bucket **********");
-                return new ResponseEntity<>(null,HttpStatus.BAD_REQUEST);
-            }
+            long end = System.currentTimeMillis();
+            long timeElapsed = end - start;
+            statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+            logger.info("**********Image Not Found in S3 bucket **********");
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        catch (Exception e){
+            long end = System.currentTimeMillis();
+            long timeElapsed = end - start;
+            statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+            logger.info("**********Error while Retrieving Image from S3 bucket **********");
+            return new ResponseEntity<>(null,HttpStatus.BAD_REQUEST);
+        }
     }
 
     @DeleteMapping("/v1/user/self/pic")
     public ResponseEntity deletePic(Authentication authentication){
-            statsd.incrementCounter("DeleteUserPicAPI");
-            long start = System.currentTimeMillis();
-                User user = userRepository.findByUserName(authentication.getName())
+        statsd.incrementCounter("DeleteUserPicAPI");
+        long start = System.currentTimeMillis();
+        User user = userRepository.findByUserName(authentication.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
-       // UserPic picData = imageRepository.findByUserId(user.getId().toString());
+        // UserPic picData = imageRepository.findByUserId(user.getId().toString());
         try{
-                UserPic imageData = imageRepository.findByUserId(user.getId().toString());
-                if (imageData != null) {
-                    System.out.println(">>>>>>>>>>>>>>>>>>> Delete - user - "+ imageData.getUser_id());
-                    long dbBookImageDeleteFromS3Start = System.currentTimeMillis();
-                    amazonS3.deleteObject(bucket, imageData.getUrl());
-                    long dbBookImageDeleteFromS3End = System.currentTimeMillis();
-                    long dbBookImageDeleteFromS3TimeElapsed = dbBookImageDeleteFromS3End - dbBookImageDeleteFromS3Start;
-                    statsd.recordExecutionTime("uploadImageToS3Time", dbBookImageDeleteFromS3TimeElapsed);
-                    imageRepository.deleteByUserId(imageData.getUser_id());
-                    long end = System.currentTimeMillis();
-                    long timeElapsed = end - start;
-                    statsd.recordExecutionTime("DeleteImageFromS3ApiTime", timeElapsed);
-                    logger.info("**********Image Deleted from S3 bucket successfully**********");
-                    return new ResponseEntity<>(HttpStatus.OK);
-                }
+            UserPic imageData = imageRepository.findByUserId(user.getId().toString());
+            if (imageData != null) {
+                System.out.println(">>>>>>>>>>>>>>>>>>> Delete - user - "+ imageData.getUser_id());
+                long dbBookImageDeleteFromS3Start = System.currentTimeMillis();
+                amazonS3.deleteObject(bucket, imageData.getUrl());
+                long dbBookImageDeleteFromS3End = System.currentTimeMillis();
+                long dbBookImageDeleteFromS3TimeElapsed = dbBookImageDeleteFromS3End - dbBookImageDeleteFromS3Start;
+                statsd.recordExecutionTime("uploadImageToS3Time", dbBookImageDeleteFromS3TimeElapsed);
+                imageRepository.deleteByUserId(imageData.getUser_id());
+                long end = System.currentTimeMillis();
+                long timeElapsed = end - start;
+                statsd.recordExecutionTime("DeleteImageFromS3ApiTime", timeElapsed);
+                logger.info("**********Image Deleted from S3 bucket successfully**********");
+                return new ResponseEntity<>(HttpStatus.OK);
+            }
             long end = System.currentTimeMillis();
             long timeElapsed = end - start;
             statsd.recordExecutionTime("DeleteImageFromS3ApiTime", timeElapsed);
@@ -373,5 +466,7 @@ public class UserController {
         return convertedFile;
 
     }
+
+
 }
 

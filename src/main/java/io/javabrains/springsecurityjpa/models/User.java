@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
+import java.text.DateFormat;
+import java.util.Date;
 import java.util.UUID;
 
 @Entity
@@ -26,6 +28,8 @@ public class User {
     private boolean active = true;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String roles;
+    private boolean verified;
+    private Timestamp verifiedOn;
 
     public User(String userName, String password, String firstName, String lastName){
         this.id = UUID.randomUUID();
@@ -33,6 +37,18 @@ public class User {
         this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.verified = false;
+        this.verifiedOn = null;
+    }
+
+    public User(String userName, String password, String firstName, String lastName, Boolean verified, Timestamp verifiedOn){
+        this.id = UUID.randomUUID();
+        this.userName = userName;
+        this.password = password;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.verified = verified;
+        this.verifiedOn = verifiedOn;
     }
 
     public User(){
@@ -113,6 +129,22 @@ public class User {
 
     public void setRoles(String roles) {
         this.roles = roles;
+    }
+
+    public boolean isVerified() {
+        return verified;
+    }
+
+    public void setVerified(boolean verified) {
+        this.verified = verified;
+    }
+
+    public Timestamp getVerifiedOn() {
+        return verifiedOn;
+    }
+
+    public void setVerifiedOn(Timestamp verifiedOn) {
+        this.verifiedOn = verifiedOn;
     }
 
 //    public int getVersion() {
