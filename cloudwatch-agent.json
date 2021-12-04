@@ -8,7 +8,7 @@
       "files": {
         "collect_list": [
           {
-            "file_path": "/opt/webapplog.log",
+            "file_path": "/home/ubuntu/webapplog.txt",
             "log_group_name": "csye6225",
             "log_stream_name": "webapp"
 
@@ -21,7 +21,7 @@
   "metrics":{
     "metrics_collected":{
       "statsd":{
-        "service_address":":8080",
+        "service_address":":8125",
         "metrics_collection_interval":10,
         "metrics_aggregation_interval":0
       }

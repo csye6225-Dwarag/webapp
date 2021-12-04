@@ -43,6 +43,9 @@ public class UserController {
     ImageRepository imageRepository;
 
     @Autowired
+    private final UserReadOnlyRepository userReadOnlyRepository;
+
+    @Autowired
     private AmazonS3 amazonS3;
 
     @Autowired
@@ -52,7 +55,6 @@ public class UserController {
     AmazonSNS snsClient;
 
     Long expirationTTL;
-    String token;
 
     @Value("${snstopic}")
     private String snstopic;
@@ -70,6 +72,13 @@ public class UserController {
 //    public String home() {
 //        return ("<h1>Welcome</h1>");
 //    }
+
+    public UserController(UserRepository userRepository, ImageRepository imageRepository, UserReadOnlyRepository userReadOnlyRepository) {
+        this.userRepository = userRepository;
+        this.imageRepository = imageRepository;
+        this.userReadOnlyRepository = userReadOnlyRepository;
+
+    }
 
     @GetMapping("/v1/user/self")
     public ResponseEntity<User> user(Authentication authentication) {
@@ -173,37 +182,6 @@ public class UserController {
             for (User user : users) {
                 //System.out.println("Registered user: " + newUser.toString());
                 if (user.getUserName().equals(newUser.getUserName())) {
-                    dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
-                    logger.info("DynamoDbClient built successfully");
-
-                    Instant currentInstant = Instant.now();
-                    Instant expirationInstant = currentInstant.plusSeconds(TimeUnit.MINUTES.toSeconds(Long.parseLong(System.getenv("TTL"))));
-
-                    expirationTTL = expirationInstant.getEpochSecond();
-
-                    token = UUID.randomUUID().toString();
-
-                    PutItemRequest request = new PutItemRequest();
-                    request.setTableName("csye6225-dynamo");
-                    request.setReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL);
-                    request.setReturnValues(ReturnValue.ALL_OLD);
-                    Map<String, AttributeValue> map = new HashMap<>();
-                    map.put("AccessToken", new AttributeValue(token));
-                    map.put("Email", new AttributeValue(user.getUserName()));
-                    map.put("TTL", new AttributeValue(expirationTTL.toString()));
-                    request.setItem(map);
-                    dynamodbClient.putItem(request);
-
-                    snsClient = AmazonSNSClientBuilder.defaultClient();
-
-                    JSONObject json = new JSONObject();
-                    json.put("AccessToken", token);
-                    json.put("EmailAddress",user.getUserName());
-                    json.put("MessageType","email");
-                    PublishRequest publishReq = new PublishRequest()
-                            .withTopicArn(snstopic)
-                            .withMessage(json.toString());
-                    snsClient.publish(publishReq);
                     // System.out.println("User Already exists!");
                     logger.info("**********User account already exists with this email ! **********");
                     long end = System.currentTimeMillis();
@@ -212,6 +190,41 @@ public class UserController {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
                 }
             }
+            dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
+            logger.info("DynamoDbClient built successfully");
+            logger.info("---------------------------------");
+            logger.info(dynamodbClient.toString());
+            logger.info("---------------------------------");
+
+            Instant currentInstant = Instant.now();
+            Instant expirationInstant = currentInstant.plusSeconds(300);
+
+            expirationTTL = expirationInstant.getEpochSecond();
+            logger.info("Expiration TTL : "+expirationTTL);
+            String token = UUID.randomUUID().toString();
+
+            PutItemRequest request = new PutItemRequest();
+            request.setTableName("csye6225-dynamo");
+            request.setReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL);
+            request.setReturnValues(ReturnValue.ALL_OLD);
+            Map<String, AttributeValue> map = new HashMap<>();
+            map.put("AccessToken", new AttributeValue(token));
+            map.put("id", new AttributeValue(newUser.getUserName()));
+            map.put("TTL", new AttributeValue(expirationTTL.toString()));
+            request.setItem(map);
+            dynamodbClient.putItem(request);
+            logger.info("Dynamodb put successful");
+
+            snsClient = AmazonSNSClientBuilder.defaultClient();
+
+            JSONObject json = new JSONObject();
+            json.put("AccessToken", token);
+            json.put("EmailAddress",newUser.getUserName());
+            json.put("MessageType","email");
+            PublishRequest publishReq = new PublishRequest()
+                    .withTopicArn(snstopic)
+                    .withMessage(json.toString());
+            snsClient.publish(publishReq);
             BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
             newUser.setPassword(bCryptPasswordEncoder.encode(newUser.getPassword()));
             newUser.setVerified(false);
@@ -219,6 +232,11 @@ public class UserController {
             if (saveDetail(newUser, userRepository, start, statsd)) {
                 User user = userRepository.findByUserName(newUser.getUserName())
                         .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + newUser.getUserName()));
+                long end = System.currentTimeMillis();
+                long timeElapsed = end - start;
+                logger.info("Time taken by save user api call is " + timeElapsed + "ms");
+                statsd.recordExecutionTime("createUserAPITime",timeElapsed);
+                logger.info("**********User details save successfully !**********");
                 return ResponseEntity.status(HttpStatus.CREATED).body(user);
             } else {
                 logger.info("**********Incorrect Request from User**********");
@@ -456,17 +474,6 @@ public class UserController {
             return new ResponseEntity<>(null,HttpStatus.BAD_REQUEST);
         }
     }
-
-
-    private File convertMultiPartToFile(MultipartFile  file) throws IOException {
-        File convertedFile = new File(file.getOriginalFilename());
-        FileOutputStream fos = new FileOutputStream(convertedFile);
-        fos.write(file.getBytes());
-        fos.close();
-        return convertedFile;
-
-    }
-
 
 }
 
