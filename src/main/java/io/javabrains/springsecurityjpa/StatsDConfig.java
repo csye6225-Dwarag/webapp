@@ -11,12 +11,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class StatsDConfig {
 
-    private boolean publishMessage = true;
+    @Value("true")
+    private boolean publishMessage;
 
     @Value("localhost")
     private String metricHost;
 
-    @Value("8080")
+    @Value("8125")
     private int portNumber;
 
     @Value("csye6225")
