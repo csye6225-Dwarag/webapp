@@ -43,7 +43,7 @@ public class UserController {
     ImageRepository imageRepository;
 
     @Autowired
-    private final UserReadOnlyRepository userReadOnlyRepository;
+    UserReadOnlyRepository userReadOnlyRepository;
 
     @Autowired
     private AmazonS3 amazonS3;
@@ -52,6 +52,7 @@ public class UserController {
     private StatsDClient statsd;
 
     AmazonDynamoDB dynamodbClient;
+
     AmazonSNS snsClient;
 
     Long expirationTTL;
@@ -73,18 +74,11 @@ public class UserController {
 //        return ("<h1>Welcome</h1>");
 //    }
 
-    public UserController(UserRepository userRepository, ImageRepository imageRepository, UserReadOnlyRepository userReadOnlyRepository) {
-        this.userRepository = userRepository;
-        this.imageRepository = imageRepository;
-        this.userReadOnlyRepository = userReadOnlyRepository;
-
-    }
-
     @GetMapping("/v1/user/self")
     public ResponseEntity<User> user(Authentication authentication) {
         statsd.incrementCounter("GetUserDetailsApi");
         long start = System.currentTimeMillis();
-        User user = userRepository.findByUserName(authentication.getName())
+        User user = userReadOnlyRepository.findByUserName(authentication.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
         long end = System.currentTimeMillis();
         long dbTimeElapsed = end - start;
