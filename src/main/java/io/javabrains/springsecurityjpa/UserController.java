@@ -42,8 +42,8 @@ public class UserController {
     @Autowired
     ImageRepository imageRepository;
 
-    @Autowired
-    UserReadOnlyRepository userReadOnlyRepository;
+//    @Autowired
+//    UserReadOnlyRepository userReadOnlyRepository;
 
     @Autowired
     private AmazonS3 amazonS3;
@@ -78,7 +78,7 @@ public class UserController {
     public ResponseEntity<User> user(Authentication authentication) {
         statsd.incrementCounter("GetUserDetailsApi");
         long start = System.currentTimeMillis();
-        User user = userReadOnlyRepository.findByUserName(authentication.getName())
+        User user = userRepository.findByUserName(authentication.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
         long end = System.currentTimeMillis();
         long dbTimeElapsed = end - start;

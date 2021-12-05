@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface ImageRepository extends JpaRepository<UserPic, UUID>
+public interface ImageRepository extends JpaRepository<UserPic, Integer>
 {
     public UserPic findByUserId(String userId);
 
