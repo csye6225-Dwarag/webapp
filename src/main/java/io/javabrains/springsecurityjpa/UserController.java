@@ -248,6 +248,7 @@ public class UserController {
         }
     }
 
+    @GetMapping("/v1/verifyUserEmail")
     public ResponseEntity<String> verifyUserEmail(@RequestParam("email") String header_email, @RequestParam("token") String header_token ) {
         try{
             dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
