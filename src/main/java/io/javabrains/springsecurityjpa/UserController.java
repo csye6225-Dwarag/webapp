@@ -200,9 +200,11 @@ public class UserController {
             logger.info("---------------------------------");
 
             Instant currentInstant = Instant.now();
+            logger.info("--------------Current Instant-------------------" + currentInstant);
             Instant expirationInstant = currentInstant.plusSeconds(300);
-
+            logger.info("--------------Expiration Instant-------------------" + expirationInstant);
             expirationTTL = expirationInstant.getEpochSecond();
+            logger.info("--------------Expiration TTL-------------------" + expirationTTL);
             logger.info("Expiration TTL : "+expirationTTL);
             String token = UUID.randomUUID().toString();
 
@@ -257,7 +259,11 @@ public class UserController {
         try{
             logger.info("**********Verify Method**********");
             logger.info("**********header email**********" + header_email);
-            logger.info("**********header email**********" + header_token);
+            logger.info("**********header token**********" + header_token);
+            if(header_email.contains(" ")){
+                header_email.replace(" ", "+");
+            }
+            logger.info("**********header email**********" + header_email);
             dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
             DynamoDB dynamoDB = new DynamoDB(dynamodbClient);
 //            /* Create an Object of GetItemRequest */
@@ -295,11 +301,13 @@ public class UserController {
             logger.info("**********item TTL value**********" + item.get("TTL"));
             boolean tokenCheck = false;
             boolean ttlCheck = false;
-            if(item.get("AccessToken") == header_token){
+            if(item.get("AccessToken").equals(header_token)){
                tokenCheck = true;
                 logger.info("**********item Token check**********" + "True");
             }
-            if(Long.parseLong(item.get("TTL").toString()) >= Long.parseLong(String.valueOf(Instant.now()))){
+            logger.info("******************TTL***********" + Long.parseLong(item.get("TTL").toString()));
+            logger.info("******************Instant now***********" + Long.parseLong(String.valueOf(Instant.now().getEpochSecond())));
+            if(Long.parseLong(item.get("TTL").toString()) >= Long.parseLong(String.valueOf(Instant.now().getEpochSecond()))){
                 ttlCheck = true;
                 logger.info("**********item TTL check**********" + "True");
 
