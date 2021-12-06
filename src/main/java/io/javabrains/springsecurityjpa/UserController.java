@@ -265,65 +265,64 @@ public class UserController {
 
     @GetMapping("/v1/verifyUserEmail")
     public ResponseEntity<String> verifyUserEmail(@RequestParam("email") String header_email, @RequestParam("token") String header_token ) {
-        try{
-            logger.info("**********Verify Method**********");
-            logger.info("**********header email**********" + header_email);
-            logger.info("**********header token**********" + header_token);
-            dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
-            DynamoDB dynamoDB = new DynamoDB(dynamodbClient);
+        User user = userRepository.findByUserName(header_email)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + header_email));
+        userRepository.flush();
+        if (user.isVerified()) {
+            statsd.incrementCounter("Verify User API");
+            try {
+                logger.info("**********Verify Method**********");
+                logger.info("**********header email**********" + header_email);
+                logger.info("**********header token**********" + header_token);
+                dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
+                DynamoDB dynamoDB = new DynamoDB(dynamodbClient);
 
-            logger.info("**********header_token**********" + header_token);
+                logger.info("**********header_token**********" + header_token);
 
-            Table table = dynamoDB.getTable("csye6225-dynamo");
-            logger.info("**********dynamo Table **********" + table.toString());
-            GetItemSpec spec = new GetItemSpec()
-                    .withPrimaryKey("id", header_email);
-            logger.info("**********getItem spec **********" + spec.toString());
+                Table table = dynamoDB.getTable("csye6225-dynamo");
+                logger.info("**********dynamo Table **********" + table.toString());
+                GetItemSpec spec = new GetItemSpec()
+                        .withPrimaryKey("id", header_email);
+                logger.info("**********getItem spec **********" + spec.toString());
 //            Item item = table.getItem(spec);
-            Item item = table.getItem("id", header_email);
-            logger.info("**********item**********" + item.toJSONPretty());
-            logger.info("**********item token value**********" + item.get("AccessToken"));
-            logger.info("**********item TTL value**********" + item.get("TTL"));
-            boolean tokenCheck = false;
-            boolean ttlCheck = false;
-            if(item.get("AccessToken").equals(header_token)){
-               tokenCheck = true;
-                logger.info("**********item Token check**********" + "True");
-            } else {
-                return new ResponseEntity<>("Invalid token", HttpStatus.UNAUTHORIZED);
-            }
-            logger.info("******************TTL***********" + Long.parseLong(item.get("TTL").toString()));
-            logger.info("******************Instant now***********" + Long.parseLong(String.valueOf(Instant.now().getEpochSecond())));
-            if(Long.parseLong(item.get("TTL").toString()) >= Long.parseLong(String.valueOf(Instant.now().getEpochSecond()))){
-                ttlCheck = true;
-                logger.info("**********item TTL check**********" + "True");
+                Item item = table.getItem("id", header_email);
+                logger.info("**********item**********" + item.toJSONPretty());
+                logger.info("**********item token value**********" + item.get("AccessToken"));
+                logger.info("**********item TTL value**********" + item.get("TTL"));
+                boolean tokenCheck = false;
+                boolean ttlCheck = false;
+                if (item.get("AccessToken").equals(header_token)) {
+                    tokenCheck = true;
+                    logger.info("**********item Token check**********" + "True");
+                } else {
+                    return new ResponseEntity<>("Invalid token", HttpStatus.UNAUTHORIZED);
+                }
+                logger.info("******************TTL***********" + Long.parseLong(item.get("TTL").toString()));
+                logger.info("******************Instant now***********" + Long.parseLong(String.valueOf(Instant.now().getEpochSecond())));
+                if (Long.parseLong(item.get("TTL").toString()) >= Long.parseLong(String.valueOf(Instant.now().getEpochSecond()))) {
+                    ttlCheck = true;
+                    logger.info("**********item TTL check**********" + "True");
 
-            } else {
-                return new ResponseEntity<>("Expired token", HttpStatus.UNAUTHORIZED);
-            }
-            if(tokenCheck && ttlCheck){
-                logger.info("**********inside if check**********");
+                } else {
+                    return new ResponseEntity<>("Expired token", HttpStatus.UNAUTHORIZED);
+                }
+                if (tokenCheck && ttlCheck) {
+                    logger.info("**********inside if check**********");
+                    userRepository.flush();
+                    userRepository.updateUserVerified(header_email, true, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis()));
+                    logger.info("**********user details update success**********");
+                    return new ResponseEntity<>("User Verified", HttpStatus.OK);
+                }
+                logger.info("**********outside if check**********");
 
-//                User user = userRepository.findByUserName(header_email)
-//                        .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + header_email));
-                userRepository.flush();
-//                logger.info("**********got user details**********");
-//                user.setVerified(true);
-//                user.setVerifiedOn(new Timestamp(System.currentTimeMillis()));
-//                user.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
-                //userRepository.save(user);
-                userRepository.updateUserVerified(header_email, true, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis()));
-                logger.info("**********user details update success**********");
-                return new ResponseEntity<>("User Verified",HttpStatus.OK);
+                return new ResponseEntity<>("User Not Found", HttpStatus.NOT_FOUND);
+            } catch (Exception e) {
+                logger.info("**********Exception!**********");
+                logger.info(e.toString());
+                return new ResponseEntity<>("Exception - Bad Request", HttpStatus.BAD_REQUEST);
             }
-            logger.info("**********outside if check**********");
-
-            return new ResponseEntity<>(null,HttpStatus.NOT_FOUND);
-        }
-        catch (Exception e){
-            logger.info("**********Exception!**********");
-            logger.info(e.toString());
-            return new ResponseEntity<>(null,HttpStatus.BAD_REQUEST);
+        } else {
+            return new ResponseEntity<>("User Already Verified", HttpStatus.OK);
         }
     }
 
