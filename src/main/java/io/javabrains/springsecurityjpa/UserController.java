@@ -13,6 +13,7 @@ import com.amazonaws.services.sns.AmazonSNSClientBuilder;
 import com.amazonaws.services.sns.model.PublishRequest;
 import io.javabrains.springsecurityjpa.models.User;
 import io.javabrains.springsecurityjpa.models.UserPic;
+import org.apache.http.protocol.HTTP;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -305,6 +306,8 @@ public class UserController {
             if(item.get("AccessToken").equals(header_token)){
                tokenCheck = true;
                 logger.info("**********item Token check**********" + "True");
+            } else {
+                return new ResponseEntity<>("Invalid token", HttpStatus.UNAUTHORIZED);
             }
             logger.info("******************TTL***********" + Long.parseLong(item.get("TTL").toString()));
             logger.info("******************Instant now***********" + Long.parseLong(String.valueOf(Instant.now().getEpochSecond())));
@@ -312,6 +315,8 @@ public class UserController {
                 ttlCheck = true;
                 logger.info("**********item TTL check**********" + "True");
 
+            } else {
+                return new ResponseEntity<>("Expired token", HttpStatus.UNAUTHORIZED);
             }
             if(tokenCheck && ttlCheck){
                 logger.info("**********inside if check**********");
@@ -323,7 +328,7 @@ public class UserController {
                 user.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
                 userRepository.save(user);
                 logger.info("**********user details update success**********");
-                return new ResponseEntity<>(null,HttpStatus.OK);
+                return new ResponseEntity<>("User Verified",HttpStatus.OK);
                 //userRepository.updateUserVerified(header_email,user.isVerified() , user.getAccountUpdated());
             }
             logger.info("**********outside if check**********");
