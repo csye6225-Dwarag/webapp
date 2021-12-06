@@ -2,6 +2,10 @@ package io.javabrains.springsecurityjpa;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
 import com.amazonaws.services.dynamodbv2.model.*;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.sns.AmazonSNS;
@@ -253,57 +257,67 @@ public class UserController {
         try{
             logger.info("**********Verify Method**********");
             dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
-            /* Create an Object of GetItemRequest */
-            GetItemRequest request = new GetItemRequest();
-
-            /* Setting Table Name */
-            request.setTableName("csye6225-dynamo");
-
-            /* Setting Consumed Capacity */
-            request.setReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL);
-
-            /* Setting Consistency Models */
-            /* true for Strong Consistent & false for Eventually Consistent */
-            request.setConsistentRead(true);
-
-            /* Create a Map of Primary Key attributes */
-            Map<String, AttributeValue> keysMap = new HashMap<>();
-            keysMap.put("id", new AttributeValue(header_email));
-
-            request.setKey(keysMap);
-            logger.info("**********DynamoDB before get**********");
-            GetItemResult result = dynamodbClient.getItem(request);
-            logger.info("**********DynamoDB after get success**********");
+            DynamoDB dynamoDB = new DynamoDB(dynamodbClient);
+//            /* Create an Object of GetItemRequest */
+//            GetItemRequest request = new GetItemRequest();
+//
+//            /* Setting Table Name */
+//            request.setTableName("csye6225-dynamo");
+//
+//            /* Setting Consumed Capacity */
+//            request.setReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL);
+//
+//            /* Setting Consistency Models */
+//            /* true for Strong Consistent & false for Eventually Consistent */
+//            request.setConsistentRead(true);
+//
+//            /* Create a Map of Primary Key attributes */
+//            Map<String, AttributeValue> keysMap = new HashMap<>();
+//            keysMap.put("id", new AttributeValue(header_email));
+//
+//            request.setKey(keysMap);
+//            logger.info("**********DynamoDB before get**********");
+//            GetItemResult result = dynamodbClient.getItem(request);
+//            logger.info("**********DynamoDB after get success**********");
             logger.info("**********header_token**********" + header_token);
-            AtomicReference<Boolean> check1 = new AtomicReference<>(false);
-            AtomicReference<Boolean> check2 = new AtomicReference<>(false);
-            if (result.getItem() != null) {
-                result.getItem().entrySet().stream()
-                        .forEach(e -> {
-                            logger.info("**********for loop**********");
-                            if(e.getKey() == "AccessToken"){
-                                logger.info("**********token key check**********");
-                                if(e.getValue().toString() == header_token){
-                                    check1.set(true);
-                                    logger.info("**********token value check 1**********" + check1.get().toString());
-                                }
-                            }
-                            if(e.getKey() == "TTL"){
-                                logger.info("**********TTL key check**********");
-                                if(Long.parseLong(e.getValue().toString()) >= Long.parseLong(String.valueOf(Instant.now()))){
-                                    check2.set(true);
-                                    logger.info("**********check 2**********" + check2.get().toString());
 
-                                }
-                            }
-                        });
+            Table table = dynamoDB.getTable("csye6225-dynamo");
+            GetItemSpec spec = new GetItemSpec()
+                    .withPrimaryKey("id", header_email);
 
-            }
-            logger.info(check1.get().toString() + "<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>" + check2.get().toString());
-            if(check1.get() && check2.get()){
+            Item item = table.getItem(spec);
+            logger.info("**********item token value**********" + item.get("AccessToken"));
+            logger.info("**********item TTL value**********" + item.get("TTL"));
+            //            Item item = table.getItem("Id", 210);
+//            AtomicReference<Boolean> check1 = new AtomicReference<>(false);
+//            AtomicReference<Boolean> check2 = new AtomicReference<>(false);
+//            if (result.getItem() != null) {
+//                result.getItem().entrySet().stream()
+//                        .forEach(e -> {
+//                            logger.info("**********for loop**********");
+//                            if(e.getKey() == "AccessToken"){
+//                                logger.info("**********token key check**********");
+//                                if(e.getValue().toString() == header_token){
+//                                    check1.set(true);
+//                                    logger.info("**********token value check 1**********" + check1.get().toString());
+//                                }
+//                            }
+//                            if(e.getKey() == "TTL"){
+//                                logger.info("**********TTL key check**********");
+//                                if(Long.parseLong(e.getValue().toString()) >= Long.parseLong(String.valueOf(Instant.now()))){
+//                                    check2.set(true);
+//                                    logger.info("**********check 2**********" + check2.get().toString());
+//
+//                                }
+//                            }
+//                        });
+//
+//            }
+//            logger.info(check1.get().toString() + "<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>" + check2.get().toString());
+//            if(check1.get() && check2.get()){
 
-                return new ResponseEntity<>(null,HttpStatus.OK);
-            }
+//                return new ResponseEntity<>(null,HttpStatus.OK);
+//            }
             return new ResponseEntity<>(null,HttpStatus.NOT_FOUND);
         }
         catch (Exception e){
