@@ -361,69 +361,74 @@ public class UserController {
 
     @PostMapping("/v1/user/self/pic")
     public ResponseEntity addUpdatePic(Authentication authentication, @RequestBody byte[] binaryFile) {
-        statsd.incrementCounter("AddUserPicAPI");
-        long start = System.currentTimeMillis();
-        try {
-            String fileUrl = "";
-            String fileName = generateFileName();
-            File file = new File(fileName);
-            FileOutputStream fos = new FileOutputStream(file);
-            fos.write(binaryFile);
-            fos.close();
-            Timestamp updateDate = new Timestamp(System.currentTimeMillis());
+        User user = userRepository.findByUserName(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+        userRepository.flush();
+        if (user.isVerified()) {
+            statsd.incrementCounter("AddUserPicAPI");
+            long start = System.currentTimeMillis();
+            try {
+                String fileUrl = "";
+                String fileName = generateFileName();
+                File file = new File(fileName);
+                FileOutputStream fos = new FileOutputStream(file);
+                fos.write(binaryFile);
+                fos.close();
+                Timestamp updateDate = new Timestamp(System.currentTimeMillis());
 
-            User user = userRepository.findByUserName(authentication.getName())
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
-            UserPic picData = imageRepository.getUserData(user.getId().toString());
-            imageRepository.flush();
-            //File file = convertMultiPartToFile(multipartFile);
-            String fileNameWithDate = new Date().getTime() + "-" + fileName.replace(" ", "_");
+                UserPic picData = imageRepository.getUserData(user.getId().toString());
+                imageRepository.flush();
+                //File file = convertMultiPartToFile(multipartFile);
+                String fileNameWithDate = new Date().getTime() + "-" + fileName.replace(" ", "_");
 //            fileUrl = bucketURL+"/"+bucket+"/"+fileNameWithDate;
-            String userID = user.getId().toString();
-            fileUrl = userID + "/" + fileNameWithDate;
+                String userID = user.getId().toString();
+                fileUrl = userID + "/" + fileNameWithDate;
 
-            if (picData != null) {
-                amazonS3.deleteObject(bucket, picData.getUrl());
+                if (picData != null) {
+                    amazonS3.deleteObject(bucket, picData.getUrl());
 //                picData.setUploadDate(new Timestamp(System.currentTimeMillis()));
 //                picData.setFileName(fileNameWithDate);
 //                picData.setUrl(fileUrl);
+                    long dbBookImageUploadToS3Start = System.currentTimeMillis();
+                    System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>> Update Pic");
+                    amazonS3.putObject(bucket, fileUrl, file);
+                    long dbBookImageUploadToS3End = System.currentTimeMillis();
+                    long dbBookImageUploadToS3TimeElapsed = dbBookImageUploadToS3End - dbBookImageUploadToS3Start;
+                    statsd.recordExecutionTime("uploadImageToS3Time", dbBookImageUploadToS3TimeElapsed);
+                    imageRepository.updatePic(userID, fileNameWithDate, fileUrl, new Timestamp(System.currentTimeMillis()));
+                    long end = System.currentTimeMillis();
+                    long timeElapsed = end - start;
+                    statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+                    logger.info("**********Image uploaded to S3 bucket successfully**********");
+                    picData = imageRepository.getUserData(user.getId().toString());
+                    return new ResponseEntity<>(picData, HttpStatus.CREATED);
+                } else {
+                    System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>> New Pic");
+                    picData = new UserPic(fileNameWithDate, fileUrl, updateDate, user.getId().toString());
+                }
                 long dbBookImageUploadToS3Start = System.currentTimeMillis();
-                System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>> Update Pic");
                 amazonS3.putObject(bucket, fileUrl, file);
                 long dbBookImageUploadToS3End = System.currentTimeMillis();
                 long dbBookImageUploadToS3TimeElapsed = dbBookImageUploadToS3End - dbBookImageUploadToS3Start;
                 statsd.recordExecutionTime("uploadImageToS3Time", dbBookImageUploadToS3TimeElapsed);
-                imageRepository.updatePic(userID, fileNameWithDate, fileUrl, new Timestamp(System.currentTimeMillis()));
+                System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>" + picData + "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+                UserPic userPicDetails = imageRepository.save(picData);
                 long end = System.currentTimeMillis();
                 long timeElapsed = end - start;
                 statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
                 logger.info("**********Image uploaded to S3 bucket successfully**********");
-                picData = imageRepository.getUserData(user.getId().toString());
-                return new ResponseEntity<>(picData, HttpStatus.CREATED);
-            } else {
-                System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>> New Pic");
-                picData = new UserPic(fileNameWithDate, fileUrl, updateDate, user.getId().toString());
+                return new ResponseEntity<>(userPicDetails, HttpStatus.CREATED);
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error("error [" + e.getMessage() + "] occurred while uploading Image ");
+                long end = System.currentTimeMillis();
+                long timeElapsed = end - start;
+                statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+                logger.info("**********Error uploading image to S3**********");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
             }
-            long dbBookImageUploadToS3Start = System.currentTimeMillis();
-            amazonS3.putObject(bucket, fileUrl, file);
-            long dbBookImageUploadToS3End = System.currentTimeMillis();
-            long dbBookImageUploadToS3TimeElapsed = dbBookImageUploadToS3End - dbBookImageUploadToS3Start;
-            statsd.recordExecutionTime("uploadImageToS3Time", dbBookImageUploadToS3TimeElapsed);
-            System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>" + picData + "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-            UserPic userPicDetails = imageRepository.save(picData);
-            long end = System.currentTimeMillis();
-            long timeElapsed = end - start;
-            statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-            logger.info("**********Image uploaded to S3 bucket successfully**********");
-            return new ResponseEntity<>(userPicDetails, HttpStatus.CREATED);
-        }catch (Exception e){
-            e.printStackTrace();
-            logger.error("error [" + e.getMessage() + "] occurred while uploading Image ");
-            long end = System.currentTimeMillis();
-            long timeElapsed = end - start;
-            statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-            logger.info("**********Error uploading image to S3**********");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        } else {
+            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
         }
     }
 
@@ -433,70 +438,77 @@ public class UserController {
 
     @GetMapping("/v1/user/self/pic")
     public ResponseEntity getPic(Authentication authentication){
-        statsd.incrementCounter("GetUserPicAPI");
-        long start = System.currentTimeMillis();
-        try{
-            User user = userRepository.findByUserName(authentication.getName())
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
-            UserPic picData = imageRepository.findByUserId(user.getId().toString());
-            if(picData != null) {
+        User user = userRepository.findByUserName(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+        userRepository.flush();
+        if (user.isVerified()) {
+            statsd.incrementCounter("GetUserPicAPI");
+            long start = System.currentTimeMillis();
+            try {
+                UserPic picData = imageRepository.findByUserId(user.getId().toString());
+                if (picData != null) {
+                    long end = System.currentTimeMillis();
+                    long timeElapsed = end - start;
+                    statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+                    logger.info("**********Image Retrieved from S3 bucket successfully**********");
+                    return new ResponseEntity<>(picData, HttpStatus.OK);
+                }
                 long end = System.currentTimeMillis();
                 long timeElapsed = end - start;
                 statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-                logger.info("**********Image Retrieved from S3 bucket successfully**********");
-                return new ResponseEntity<>(picData, HttpStatus.OK);
+                logger.info("**********Image Not Found in S3 bucket **********");
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            } catch (Exception e) {
+                long end = System.currentTimeMillis();
+                long timeElapsed = end - start;
+                statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+                logger.info("**********Error while Retrieving Image from S3 bucket **********");
+                return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
             }
-            long end = System.currentTimeMillis();
-            long timeElapsed = end - start;
-            statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-            logger.info("**********Image Not Found in S3 bucket **********");
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-        catch (Exception e){
-            long end = System.currentTimeMillis();
-            long timeElapsed = end - start;
-            statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-            logger.info("**********Error while Retrieving Image from S3 bucket **********");
-            return new ResponseEntity<>(null,HttpStatus.BAD_REQUEST);
+        } else {
+            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
         }
     }
 
     @DeleteMapping("/v1/user/self/pic")
-    public ResponseEntity deletePic(Authentication authentication){
-        statsd.incrementCounter("DeleteUserPicAPI");
-        long start = System.currentTimeMillis();
+    public ResponseEntity deletePic(Authentication authentication) {
         User user = userRepository.findByUserName(authentication.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
-        // UserPic picData = imageRepository.findByUserId(user.getId().toString());
-        try{
-            UserPic imageData = imageRepository.findByUserId(user.getId().toString());
-            if (imageData != null) {
-                System.out.println(">>>>>>>>>>>>>>>>>>> Delete - user - "+ imageData.getUser_id());
-                long dbBookImageDeleteFromS3Start = System.currentTimeMillis();
-                amazonS3.deleteObject(bucket, imageData.getUrl());
-                long dbBookImageDeleteFromS3End = System.currentTimeMillis();
-                long dbBookImageDeleteFromS3TimeElapsed = dbBookImageDeleteFromS3End - dbBookImageDeleteFromS3Start;
-                statsd.recordExecutionTime("uploadImageToS3Time", dbBookImageDeleteFromS3TimeElapsed);
-                imageRepository.deleteByUserId(imageData.getUser_id());
+        userRepository.flush();
+        if (user.isVerified()) {
+            statsd.incrementCounter("DeleteUserPicAPI");
+            long start = System.currentTimeMillis();
+            try {
+                UserPic imageData = imageRepository.findByUserId(user.getId().toString());
+                if (imageData != null) {
+                    logger.info(">>>>>>>>>>>>>>>>>>> Delete - user - " + imageData.getUser_id());
+                    long dbBookImageDeleteFromS3Start = System.currentTimeMillis();
+                    amazonS3.deleteObject(bucket, imageData.getUrl());
+                    long dbBookImageDeleteFromS3End = System.currentTimeMillis();
+                    long dbBookImageDeleteFromS3TimeElapsed = dbBookImageDeleteFromS3End - dbBookImageDeleteFromS3Start;
+                    statsd.recordExecutionTime("uploadImageToS3Time", dbBookImageDeleteFromS3TimeElapsed);
+                    imageRepository.deleteByUserId(imageData.getUser_id());
+                    long end = System.currentTimeMillis();
+                    long timeElapsed = end - start;
+                    statsd.recordExecutionTime("DeleteImageFromS3ApiTime", timeElapsed);
+                    logger.info("**********Image Deleted from S3 bucket successfully**********");
+                    return new ResponseEntity<>(HttpStatus.OK);
+                }
                 long end = System.currentTimeMillis();
                 long timeElapsed = end - start;
                 statsd.recordExecutionTime("DeleteImageFromS3ApiTime", timeElapsed);
-                logger.info("**********Image Deleted from S3 bucket successfully**********");
-                return new ResponseEntity<>(HttpStatus.OK);
+                logger.info("**********Image Not Found in S3 bucket **********");
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            } catch (Exception e) {
+                long end = System.currentTimeMillis();
+                long timeElapsed = end - start;
+                statsd.recordExecutionTime("DeleteImageFromS3ApiTime", timeElapsed);
+                logger.info("**********Error while Deleting Image from S3 bucket **********");
+                e.printStackTrace();
+                return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
             }
-            long end = System.currentTimeMillis();
-            long timeElapsed = end - start;
-            statsd.recordExecutionTime("DeleteImageFromS3ApiTime", timeElapsed);
-            logger.info("**********Image Not Found in S3 bucket **********");
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-        catch (Exception e){
-            long end = System.currentTimeMillis();
-            long timeElapsed = end - start;
-            statsd.recordExecutionTime("DeleteImageFromS3ApiTime", timeElapsed);
-            logger.info("**********Error while Deleting Image from S3 bucket **********");
-            e.printStackTrace();
-            return new ResponseEntity<>(null,HttpStatus.BAD_REQUEST);
+        } else {
+            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
         }
     }
 
