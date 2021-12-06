@@ -248,9 +248,10 @@ public class UserController {
         }
     }
 
-    @GetMapping("/v1/verifyUserEmail")
+    @GetMapping("/v2/verifyUserEmail")
     public ResponseEntity<String> verifyUserEmail(@RequestParam("email") String header_email, @RequestParam("token") String header_token ) {
         try{
+            logger.info("**********Verify Method**********");
             dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
             /* Create an Object of GetItemRequest */
             GetItemRequest request = new GetItemRequest();
@@ -267,7 +268,7 @@ public class UserController {
 
             /* Create a Map of Primary Key attributes */
             Map<String, AttributeValue> keysMap = new HashMap<>();
-            keysMap.put("Email", new AttributeValue(header_email));
+            keysMap.put("id", new AttributeValue(header_email));
 
             request.setKey(keysMap);
             logger.info("**********DynamoDB before get**********");
