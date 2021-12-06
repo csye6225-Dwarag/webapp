@@ -259,7 +259,11 @@ public class UserController {
         try{
             logger.info("**********Verify Method**********");
             logger.info("**********header email**********" + header_email);
-            logger.info("**********header email**********" + header_token);
+            logger.info("**********header token**********" + header_token);
+            if(header_email.contains(" ")){
+                header_email.replace(" ", "+");
+            }
+            logger.info("**********header email**********" + header_email);
             dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
             DynamoDB dynamoDB = new DynamoDB(dynamodbClient);
 //            /* Create an Object of GetItemRequest */
@@ -301,6 +305,8 @@ public class UserController {
                tokenCheck = true;
                 logger.info("**********item Token check**********" + "True");
             }
+            logger.info("******************TTL***********" + Long.parseLong(item.get("TTL").toString()));
+            logger.info("******************Instant now***********" + Long.parseLong(String.valueOf(Instant.now().getEpochSecond())));
             if(Long.parseLong(item.get("TTL").toString()) >= Long.parseLong(String.valueOf(Instant.now().getEpochSecond()))){
                 ttlCheck = true;
                 logger.info("**********item TTL check**********" + "True");
