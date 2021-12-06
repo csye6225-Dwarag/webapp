@@ -248,7 +248,7 @@ public class UserController {
         }
     }
 
-    @PostMapping("/v2/verifyUserEmail")
+    @GetMapping("/v1/verifyUserEmail")
     public ResponseEntity<String> verifyUserEmail(@RequestParam("email") String header_email, @RequestParam("token") String header_token ) {
         try{
             logger.info("**********Verify Method**********");
@@ -274,19 +274,22 @@ public class UserController {
             logger.info("**********DynamoDB before get**********");
             GetItemResult result = dynamodbClient.getItem(request);
             logger.info("**********DynamoDB after get success**********");
+            logger.info("**********header_token**********" + header_token);
             AtomicReference<Boolean> check1 = new AtomicReference<>(false);
             AtomicReference<Boolean> check2 = new AtomicReference<>(false);
             if (result.getItem() != null) {
                 result.getItem().entrySet().stream()
                         .forEach(e -> {
+                            logger.info("**********for loop**********");
                             if(e.getKey() == "AccessToken"){
+                                logger.info("**********token key check**********");
                                 if(e.getValue().toString() == header_token){
                                     check1.set(true);
-                                    logger.info("**********check 1**********" + check1.get().toString());
-
+                                    logger.info("**********token value check 1**********" + check1.get().toString());
                                 }
                             }
                             if(e.getKey() == "TTL"){
+                                logger.info("**********TTL key check**********");
                                 if(Long.parseLong(e.getValue().toString()) >= Long.parseLong(String.valueOf(Instant.now()))){
                                     check2.set(true);
                                     logger.info("**********check 2**********" + check2.get().toString());
