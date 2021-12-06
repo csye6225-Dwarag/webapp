@@ -86,7 +86,12 @@ public class UserController {
         statsd.recordExecutionTime("GetUserFromDBTime", dbTimeElapsed);
         statsd.recordExecutionTime("GetUserDetailsApiTime", timeElapsed);
         logger.info("**********User details fetched successfully !**********");
-        return ResponseEntity.ok(user);
+        if(user.isVerified()){
+            return ResponseEntity.ok(user);
+        }else{
+            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+        }
+
     }
 
     // build update user REST API
@@ -264,7 +269,9 @@ public class UserController {
             keysMap.put("Email", new AttributeValue(header_email));
 
             request.setKey(keysMap);
+            logger.info("**********DynamoDB before get**********");
             GetItemResult result = dynamodbClient.getItem(request);
+            logger.info("**********DynamoDB after get success**********");
             AtomicReference<Boolean> check1 = new AtomicReference<>(false);
             AtomicReference<Boolean> check2 = new AtomicReference<>(false);
             if (result.getItem() != null) {
@@ -273,16 +280,21 @@ public class UserController {
                             if(e.getKey() == "AccessToken"){
                                 if(e.getValue().toString() == header_token){
                                     check1.set(true);
+                                    logger.info("**********check 1**********" + check1.get().toString());
+
                                 }
                             }
                             if(e.getKey() == "TTL"){
                                 if(Long.parseLong(e.getValue().toString()) >= Long.parseLong(String.valueOf(Instant.now()))){
                                     check2.set(true);
+                                    logger.info("**********check 2**********" + check2.get().toString());
+
                                 }
                             }
                         });
 
             }
+            logger.info(check1.get().toString() + "<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>" + check2.get().toString());
             if(check1.get() && check2.get()){
 
                 return new ResponseEntity<>(null,HttpStatus.OK);
