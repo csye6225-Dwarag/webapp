@@ -248,7 +248,7 @@ public class UserController {
         }
     }
 
-    @PostMapping("/v1/verifyUserEmail")
+    @PostMapping("/v2/verifyUserEmail")
     public ResponseEntity<String> verifyUserEmail(@RequestParam("email") String header_email, @RequestParam("token") String header_token ) {
         try{
             logger.info("**********Verify Method**********");
