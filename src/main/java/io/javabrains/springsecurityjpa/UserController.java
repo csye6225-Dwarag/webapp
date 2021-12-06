@@ -200,9 +200,11 @@ public class UserController {
             logger.info("---------------------------------");
 
             Instant currentInstant = Instant.now();
+            logger.info("--------------Current Instant-------------------" + currentInstant);
             Instant expirationInstant = currentInstant.plusSeconds(300);
-
+            logger.info("--------------Expiration Instant-------------------" + expirationInstant);
             expirationTTL = expirationInstant.getEpochSecond();
+            logger.info("--------------Expiration TTL-------------------" + expirationTTL);
             logger.info("Expiration TTL : "+expirationTTL);
             String token = UUID.randomUUID().toString();
 
@@ -295,11 +297,11 @@ public class UserController {
             logger.info("**********item TTL value**********" + item.get("TTL"));
             boolean tokenCheck = false;
             boolean ttlCheck = false;
-            if(item.get("AccessToken") == header_token){
+            if(item.get("AccessToken").equals(header_token)){
                tokenCheck = true;
                 logger.info("**********item Token check**********" + "True");
             }
-            if(Long.parseLong(item.get("TTL").toString()) >= Long.parseLong(String.valueOf(Instant.now()))){
+            if(Long.parseLong(item.get("TTL").toString()) >= Long.parseLong(String.valueOf(Instant.now().getEpochSecond()))){
                 ttlCheck = true;
                 logger.info("**********item TTL check**********" + "True");
 
