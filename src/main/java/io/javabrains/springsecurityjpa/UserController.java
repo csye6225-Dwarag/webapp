@@ -288,9 +288,36 @@ public class UserController {
             GetItemSpec spec = new GetItemSpec()
                     .withPrimaryKey("id", header_email);
             logger.info("**********getItem spec **********" + spec.toString());
-            Item item = table.getItem(spec);
+//            Item item = table.getItem(spec);
+            Item item = table.getItem("id", header_email);
+            logger.info("**********item**********" + item.toJSONPretty());
             logger.info("**********item token value**********" + item.get("AccessToken"));
             logger.info("**********item TTL value**********" + item.get("TTL"));
+            boolean tokenCheck = false;
+            boolean ttlCheck = false;
+            if(item.get("AccessToken") == header_token){
+               tokenCheck = true;
+                logger.info("**********item Token check**********" + "True");
+            }
+            if(Long.parseLong(item.get("TTL").toString()) >= Long.parseLong(String.valueOf(Instant.now()))){
+                ttlCheck = true;
+                logger.info("**********item TTL check**********" + "True");
+
+            }
+            if(tokenCheck && ttlCheck){
+                logger.info("**********inside if check**********");
+
+                User user = userRepository.findByUserName(header_email)
+                        .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + header_email));
+                logger.info("**********got user details**********");
+                user.setVerified(true);
+                user.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
+                userRepository.save(user);
+                logger.info("**********user details update success**********");
+                return new ResponseEntity<>(null,HttpStatus.OK);
+                //userRepository.updateUserVerified(header_email,user.isVerified() , user.getAccountUpdated());
+            }
+
             //            Item item = table.getItem("Id", 210);
 //            AtomicReference<Boolean> check1 = new AtomicReference<>(false);
 //            AtomicReference<Boolean> check2 = new AtomicReference<>(false);
