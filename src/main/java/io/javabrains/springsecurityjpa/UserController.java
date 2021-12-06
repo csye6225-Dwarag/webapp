@@ -13,7 +13,6 @@ import com.amazonaws.services.sns.AmazonSNSClientBuilder;
 import com.amazonaws.services.sns.model.PublishRequest;
 import io.javabrains.springsecurityjpa.models.User;
 import io.javabrains.springsecurityjpa.models.UserPic;
-import org.apache.http.protocol.HTTP;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,17 +23,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import com.timgroup.statsd.StatsDClient;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 @RestController
 public class UserController {
@@ -42,10 +38,10 @@ public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     @Autowired
-    UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Autowired
-    ImageRepository imageRepository;
+    private final ImageRepository imageRepository;
 
 //    @Autowired
 //    UserReadOnlyRepository userReadOnlyRepository;
@@ -69,6 +65,11 @@ public class UserController {
 
     @Value("${bucketName}")
     private String bucket;
+
+    public UserController(UserRepository userRepository, ImageRepository imageRepository) {
+        this.userRepository = userRepository;
+        this.imageRepository = imageRepository;
+    }
     //private String bucketURL="https://s3.console.aws.amazon.com/s3/buckets/csye6225.prod.domain.tld?region=us-east-1&tab=objects";
 
 //    private String bucket = "csye6225.prod.domain.tld";
@@ -261,11 +262,12 @@ public class UserController {
             logger.info("**********Verify Method**********");
             logger.info("**********header email**********" + header_email);
             logger.info("**********header token**********" + header_token);
+            String result = java.net.URLDecoder.decode(header_email, StandardCharsets.UTF_8);
             if(header_email.contains(" ")){
                 logger.info("**********space true**********");
                 header_email.replace(" ", "+");
             }
-            logger.info("**********header email**********" + header_email);
+            logger.info("**********result**********" + result);
             dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
             DynamoDB dynamoDB = new DynamoDB(dynamodbClient);
 //            /* Create an Object of GetItemRequest */
@@ -323,7 +325,7 @@ public class UserController {
 
 //                User user = userRepository.findByUserName(header_email)
 //                        .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + header_email));
-//                userRepository.flush();
+                userRepository.flush();
 //                logger.info("**********got user details**********");
 //                user.setVerified(true);
 //                user.setVerifiedOn(new Timestamp(System.currentTimeMillis()));
