@@ -261,6 +261,7 @@ public class UserController {
             logger.info("**********header email**********" + header_email);
             logger.info("**********header token**********" + header_token);
             if(header_email.contains(" ")){
+                logger.info("**********space true**********");
                 header_email.replace(" ", "+");
             }
             logger.info("**********header email**********" + header_email);
@@ -325,7 +326,7 @@ public class UserController {
                 return new ResponseEntity<>(null,HttpStatus.OK);
                 //userRepository.updateUserVerified(header_email,user.isVerified() , user.getAccountUpdated());
             }
-
+            logger.info("**********outside if check**********");
             //            Item item = table.getItem("Id", 210);
 //            AtomicReference<Boolean> check1 = new AtomicReference<>(false);
 //            AtomicReference<Boolean> check2 = new AtomicReference<>(false);
@@ -360,7 +361,7 @@ public class UserController {
         }
         catch (Exception e){
             logger.info("**********Exception!**********");
-            logger.error(e.toString());
+            logger.info(e.toString());
             return new ResponseEntity<>(null,HttpStatus.BAD_REQUEST);
         }
     }
