@@ -284,9 +284,10 @@ public class UserController {
             logger.info("**********header_token**********" + header_token);
 
             Table table = dynamoDB.getTable("csye6225-dynamo");
+            logger.info("**********dynamo Table **********" + table.toString());
             GetItemSpec spec = new GetItemSpec()
                     .withPrimaryKey("id", header_email);
-
+            logger.info("**********getItem spec **********" + spec.toString());
             Item item = table.getItem(spec);
             logger.info("**********item token value**********" + item.get("AccessToken"));
             logger.info("**********item TTL value**********" + item.get("TTL"));
