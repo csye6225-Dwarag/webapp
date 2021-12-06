@@ -325,11 +325,12 @@ public class UserController {
                         .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + header_email));
                 logger.info("**********got user details**********");
                 user.setVerified(true);
+                user.setVerifiedOn(new Timestamp(System.currentTimeMillis()));
                 user.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
-                userRepository.save(user);
+                //userRepository.save(user);
+                userRepository.updateUserVerified(header_email,user.isVerified(), user.getVerifiedOn(), user.getAccountUpdated());
                 logger.info("**********user details update success**********");
                 return new ResponseEntity<>("User Verified",HttpStatus.OK);
-                //userRepository.updateUserVerified(header_email,user.isVerified() , user.getAccountUpdated());
             }
             logger.info("**********outside if check**********");
             //            Item item = table.getItem("Id", 210);
