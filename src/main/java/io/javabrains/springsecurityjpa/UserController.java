@@ -256,6 +256,8 @@ public class UserController {
     public ResponseEntity<String> verifyUserEmail(@RequestParam("email") String header_email, @RequestParam("token") String header_token ) {
         try{
             logger.info("**********Verify Method**********");
+            logger.info("**********header email**********" + header_email);
+            logger.info("**********header email**********" + header_token);
             dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
             DynamoDB dynamoDB = new DynamoDB(dynamodbClient);
 //            /* Create an Object of GetItemRequest */
@@ -282,9 +284,10 @@ public class UserController {
             logger.info("**********header_token**********" + header_token);
 
             Table table = dynamoDB.getTable("csye6225-dynamo");
+            logger.info("**********dynamo Table **********" + table.toString());
             GetItemSpec spec = new GetItemSpec()
                     .withPrimaryKey("id", header_email);
-
+            logger.info("**********getItem spec **********" + spec.toString());
             Item item = table.getItem(spec);
             logger.info("**********item token value**********" + item.get("AccessToken"));
             logger.info("**********item TTL value**********" + item.get("TTL"));
