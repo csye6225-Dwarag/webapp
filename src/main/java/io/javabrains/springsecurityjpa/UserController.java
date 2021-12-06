@@ -105,65 +105,71 @@ public class UserController {
     @PutMapping("/v1/user/self")
     public ResponseEntity<User> updateUser(Authentication authentication, @RequestBody User userDetails) {
         try {
-            statsd.incrementCounter("UpdateUserDetailsAPI");
-            long start = System.currentTimeMillis();
-            if (userDetails.getUserName() != null && !userDetails.getUserName().isEmpty()) {
-                logger.info("**********Cannot Update email ! **********");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
-            }
+            User user = userRepository.findByUserName(authentication.getName())
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+            userRepository.flush();
+            if (user.isVerified()) {
+                statsd.incrementCounter("UpdateUserDetailsAPI");
+                long start = System.currentTimeMillis();
+                if (userDetails.getUserName() != null && !userDetails.getUserName().isEmpty()) {
+                    logger.info("**********Cannot Update email ! **********");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+                }
 
-            if (userDetails.getAccountCreated() != null) {
-                logger.info("**********Cannot Update Account Created details ! **********");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
-            }
+                if (userDetails.getAccountCreated() != null) {
+                    logger.info("**********Cannot Update Account Created details ! **********");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+                }
 
-            if (userDetails.getAccountUpdated() != null) {
-                logger.info("**********Cannot Update Account Updated details ! **********");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
-            }
+                if (userDetails.getAccountUpdated() != null) {
+                    logger.info("**********Cannot Update Account Updated details ! **********");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+                }
 
-            if ((userDetails.getFirstName() != null && !userDetails.getFirstName().isEmpty())
-                    && (userDetails.getLastName() != null && !userDetails.getLastName().isEmpty()) &&
-                    (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty())) {
-                String password = userDetails.getPassword();
-                BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
-                userDetails.setPassword(bCryptPasswordEncoder.encode(password));
-                userDetails.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
-                //System.out.println(">>>>>>>>>>>>>>>>>Pass -" + userDetails.getPassword());
-                long dbStart = System.currentTimeMillis();
-                userRepository.updateUser(authentication.getName(), userDetails.getFirstName(),
-                        userDetails.getLastName(), userDetails.getPassword(), userDetails.getAccountUpdated());
-                long end = System.currentTimeMillis();
-                long dbTimeElapsed = end - dbStart;
-                long timeElapsed = end - start;
-                statsd.recordExecutionTime("saveUserToDBTime", dbTimeElapsed);
-                statsd.recordExecutionTime("createNewUserApiTime", timeElapsed);
-                logger.info("**********Creating New User**********");
+                if ((userDetails.getFirstName() != null && !userDetails.getFirstName().isEmpty())
+                        && (userDetails.getLastName() != null && !userDetails.getLastName().isEmpty()) &&
+                        (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty())) {
+                    String password = userDetails.getPassword();
+                    BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
+                    userDetails.setPassword(bCryptPasswordEncoder.encode(password));
+                    userDetails.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
+                    //System.out.println(">>>>>>>>>>>>>>>>>Pass -" + userDetails.getPassword());
+                    long dbStart = System.currentTimeMillis();
+                    userRepository.updateUser(authentication.getName(), userDetails.getFirstName(),
+                            userDetails.getLastName(), userDetails.getPassword(), userDetails.getAccountUpdated());
+                    long end = System.currentTimeMillis();
+                    long dbTimeElapsed = end - dbStart;
+                    long timeElapsed = end - start;
+                    statsd.recordExecutionTime("saveUserToDBTime", dbTimeElapsed);
+                    statsd.recordExecutionTime("createNewUserApiTime", timeElapsed);
+                    logger.info("**********Creating New User**********");
+                    return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
+                }
+
+                if (userDetails.getFirstName() != null && !userDetails.getFirstName().isEmpty()) {
+                    userDetails.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
+                    userRepository.updateUserFirstName(authentication.getName(), userDetails.getFirstName(), userDetails.getAccountUpdated());
+                }
+                if (userDetails.getLastName() != null && !userDetails.getLastName().isEmpty()) {
+                    userDetails.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
+                    userRepository.updateUserLastName(authentication.getName(), userDetails.getLastName(), userDetails.getAccountUpdated());
+                }
+
+                if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
+                    String password = userDetails.getPassword();
+                    BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
+                    userDetails.setPassword(bCryptPasswordEncoder.encode(password));
+                    //System.out.println(">>>>>>>>>>>>>>>>>Pass -" + userDetails.getPassword());
+                    userRepository.updateUserPassword(authentication.getName(), userDetails.getPassword(), userDetails.getAccountUpdated());
+                }
                 return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
+            } else {
+                return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
             }
-
-            if (userDetails.getFirstName() != null && !userDetails.getFirstName().isEmpty()) {
-                userDetails.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
-                userRepository.updateUserFirstName(authentication.getName(), userDetails.getFirstName(), userDetails.getAccountUpdated());
-            }
-            if (userDetails.getLastName() != null && !userDetails.getLastName().isEmpty()) {
-                userDetails.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
-                userRepository.updateUserLastName(authentication.getName(), userDetails.getLastName(), userDetails.getAccountUpdated());
-            }
-
-            if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
-                String password = userDetails.getPassword();
-                BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
-                userDetails.setPassword(bCryptPasswordEncoder.encode(password));
-                //System.out.println(">>>>>>>>>>>>>>>>>Pass -" + userDetails.getPassword());
-                userRepository.updateUserPassword(authentication.getName(), userDetails.getPassword(), userDetails.getAccountUpdated());
-            }
-            return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
-        } catch (Exception exception) {
+        }catch (Exception exception) {
             exception.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
-
     }
 
 //    private ResponseEntity<User> getUserDetails(Authentication authentication) {
@@ -263,35 +269,9 @@ public class UserController {
             logger.info("**********Verify Method**********");
             logger.info("**********header email**********" + header_email);
             logger.info("**********header token**********" + header_token);
-            String result = URLDecoder.decode(header_email, StandardCharsets.UTF_8.toString());
-            if(header_email.contains(" ")){
-                logger.info("**********space true**********");
-                header_email.replace(" ", "+");
-            }
-            logger.info("**********result**********" + result);
             dynamodbClient = AmazonDynamoDBClientBuilder.defaultClient();
             DynamoDB dynamoDB = new DynamoDB(dynamodbClient);
-//            /* Create an Object of GetItemRequest */
-//            GetItemRequest request = new GetItemRequest();
-//
-//            /* Setting Table Name */
-//            request.setTableName("csye6225-dynamo");
-//
-//            /* Setting Consumed Capacity */
-//            request.setReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL);
-//
-//            /* Setting Consistency Models */
-//            /* true for Strong Consistent & false for Eventually Consistent */
-//            request.setConsistentRead(true);
-//
-//            /* Create a Map of Primary Key attributes */
-//            Map<String, AttributeValue> keysMap = new HashMap<>();
-//            keysMap.put("id", new AttributeValue(header_email));
-//
-//            request.setKey(keysMap);
-//            logger.info("**********DynamoDB before get**********");
-//            GetItemResult result = dynamodbClient.getItem(request);
-//            logger.info("**********DynamoDB after get success**********");
+
             logger.info("**********header_token**********" + header_token);
 
             Table table = dynamoDB.getTable("csye6225-dynamo");
@@ -337,36 +317,7 @@ public class UserController {
                 return new ResponseEntity<>("User Verified",HttpStatus.OK);
             }
             logger.info("**********outside if check**********");
-            //            Item item = table.getItem("Id", 210);
-//            AtomicReference<Boolean> check1 = new AtomicReference<>(false);
-//            AtomicReference<Boolean> check2 = new AtomicReference<>(false);
-//            if (result.getItem() != null) {
-//                result.getItem().entrySet().stream()
-//                        .forEach(e -> {
-//                            logger.info("**********for loop**********");
-//                            if(e.getKey() == "AccessToken"){
-//                                logger.info("**********token key check**********");
-//                                if(e.getValue().toString() == header_token){
-//                                    check1.set(true);
-//                                    logger.info("**********token value check 1**********" + check1.get().toString());
-//                                }
-//                            }
-//                            if(e.getKey() == "TTL"){
-//                                logger.info("**********TTL key check**********");
-//                                if(Long.parseLong(e.getValue().toString()) >= Long.parseLong(String.valueOf(Instant.now()))){
-//                                    check2.set(true);
-//                                    logger.info("**********check 2**********" + check2.get().toString());
-//
-//                                }
-//                            }
-//                        });
-//
-//            }
-//            logger.info(check1.get().toString() + "<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>" + check2.get().toString());
-//            if(check1.get() && check2.get()){
 
-//                return new ResponseEntity<>(null,HttpStatus.OK);
-//            }
             return new ResponseEntity<>(null,HttpStatus.NOT_FOUND);
         }
         catch (Exception e){
