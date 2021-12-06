@@ -27,6 +27,7 @@ import com.timgroup.statsd.StatsDClient;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -262,7 +263,7 @@ public class UserController {
             logger.info("**********Verify Method**********");
             logger.info("**********header email**********" + header_email);
             logger.info("**********header token**********" + header_token);
-            String result = java.net.URLDecoder.decode(header_email, StandardCharsets.UTF_8);
+            String result = URLDecoder.decode(header_email, StandardCharsets.UTF_8.toString());
             if(header_email.contains(" ")){
                 logger.info("**********space true**********");
                 header_email.replace(" ", "+");
