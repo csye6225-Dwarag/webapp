@@ -321,15 +321,15 @@ public class UserController {
             if(tokenCheck && ttlCheck){
                 logger.info("**********inside if check**********");
 
-                User user = userRepository.findByUserName(header_email)
-                        .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + header_email));
-                userRepository.flush();
-                logger.info("**********got user details**********");
-                user.setVerified(true);
-                user.setVerifiedOn(new Timestamp(System.currentTimeMillis()));
-                user.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
+//                User user = userRepository.findByUserName(header_email)
+//                        .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + header_email));
+//                userRepository.flush();
+//                logger.info("**********got user details**********");
+//                user.setVerified(true);
+//                user.setVerifiedOn(new Timestamp(System.currentTimeMillis()));
+//                user.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
                 //userRepository.save(user);
-                userRepository.updateUserVerified(header_email,user.isVerified(), user.getVerifiedOn(), user.getAccountUpdated());
+                userRepository.updateUserVerified(header_email, true, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis()));
                 logger.info("**********user details update success**********");
                 return new ResponseEntity<>("User Verified",HttpStatus.OK);
             }
