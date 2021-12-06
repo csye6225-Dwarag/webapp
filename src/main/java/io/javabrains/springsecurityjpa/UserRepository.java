@@ -39,4 +39,9 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     @Modifying(clearAutomatically = true)
     @Query("UPDATE User SET password=:password, accountUpdated=:accountUpdated WHERE userName in :email")
     public int updateUserPassword(@Param(value = "email") String email, @Param("password") String password, @Param("accountUpdated") Timestamp accountUpdated);
+
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE User SET verified= :verified, accountUpdated=:accountUpdated WHERE userName in :email")
+    public int updateUserVerified(@Param(value = "email") String email, @Param("verified") boolean verified, @Param("accountUpdated") Timestamp accountUpdated);
 }
