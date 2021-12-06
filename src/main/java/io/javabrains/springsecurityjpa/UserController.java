@@ -323,6 +323,7 @@ public class UserController {
 
                 User user = userRepository.findByUserName(header_email)
                         .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + header_email));
+                userRepository.flush();
                 logger.info("**********got user details**********");
                 user.setVerified(true);
                 user.setVerifiedOn(new Timestamp(System.currentTimeMillis()));
