@@ -268,7 +268,7 @@ public class UserController {
         User user = userRepository.findByUserName(header_email)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + header_email));
         userRepository.flush();
-        if (user.isVerified()) {
+        if (!user.isVerified()) {
             statsd.incrementCounter("Verify User API");
             try {
                 logger.info("**********Verify Method**********");
