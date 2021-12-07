@@ -27,8 +27,6 @@ import com.timgroup.statsd.StatsDClient;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
@@ -44,8 +42,11 @@ public class UserController {
     @Autowired
     private final ImageRepository imageRepository;
 
-//    @Autowired
-//    UserReadOnlyRepository userReadOnlyRepository;
+    @Autowired
+    private final UserReadReplicaOnlyRepository userReadReplicaOnlyRepository;
+
+    @Autowired
+    private final ImageReadReplicaOnlyRepository imageReadReplicaOnlyRepository;
 
     @Autowired
     private AmazonS3 amazonS3;
@@ -67,9 +68,11 @@ public class UserController {
     @Value("${bucketName}")
     private String bucket;
 
-    public UserController(UserRepository userRepository, ImageRepository imageRepository) {
+    public UserController(UserRepository userRepository, ImageRepository imageRepository, UserReadReplicaOnlyRepository userReadReplicaOnlyRepository, ImageReadReplicaOnlyRepository imageReadReplicaOnlyRepository) {
         this.userRepository = userRepository;
         this.imageRepository = imageRepository;
+        this.userReadReplicaOnlyRepository = userReadReplicaOnlyRepository;
+        this.imageReadReplicaOnlyRepository = imageReadReplicaOnlyRepository;
     }
     //private String bucketURL="https://s3.console.aws.amazon.com/s3/buckets/csye6225.prod.domain.tld?region=us-east-1&tab=objects";
 
@@ -85,7 +88,7 @@ public class UserController {
     public ResponseEntity<User> user(Authentication authentication) {
         statsd.incrementCounter("GetUserDetailsApi");
         long start = System.currentTimeMillis();
-        User user = userRepository.findByUserName(authentication.getName())
+        User user = userReadReplicaOnlyRepository.findByUserName(authentication.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
         long end = System.currentTimeMillis();
         long dbTimeElapsed = end - start;
@@ -444,7 +447,7 @@ public class UserController {
             statsd.incrementCounter("GetUserPicAPI");
             long start = System.currentTimeMillis();
             try {
-                UserPic picData = imageRepository.findByUserId(user.getId().toString());
+                UserPic picData = imageReadReplicaOnlyRepository.findByUserId(user.getId().toString());
                 if (picData != null) {
                     long end = System.currentTimeMillis();
                     long timeElapsed = end - start;
