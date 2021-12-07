@@ -24,7 +24,7 @@ public class User {
     private String lastName;
 
     @Column(name="accountcreated")
-    private Timestamp accountCreated;
+    private Timestamp accountcreated;
     private Timestamp accountUpdated;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private boolean active = true;
@@ -102,11 +102,11 @@ public class User {
     }
 
     public Timestamp getAccountCreated() {
-        return accountCreated;
+        return accountcreated;
     }
 
     public void setAccountCreated(Timestamp account_created) {
-        this.accountCreated = account_created;
+        this.accountcreated = account_created;
     }
 
     public Timestamp getAccountUpdated() {
