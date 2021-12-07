@@ -2,9 +2,9 @@
 -- Table: public.user_data
 
 -- DROP TABLE public.user_data;
+use users;
 
-
-CREATE TABLE IF NOT EXISTS users.users
+CREATE TABLE IF NOT EXISTS users
 (
         id binary(255) NOT NULL PRIMARY KEY,
         account_created varchar(50) DEFAULT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users.users
 --     TABLESPACE pg_default;
 
 ALTER TABLE users.users
-    OWNER to admin;
+    OWNER to csye6225;
 
 
 -- Table: public.image_data
@@ -40,7 +40,7 @@ ALTER TABLE users.users
 --     CONSTRAINT image_data_pkey PRIMARY KEY (id)
 --     )
 
-CREATE TABLE IF NOT EXISTS users.userPic (
+CREATE TABLE IF NOT EXISTS userPic (
     id binary(255) NOT NULL PRIMARY KEY,
     upload_date varchar(50) DEFAULT NULL,
     user_id varchar(255) NOT NULL,
@@ -51,4 +51,4 @@ CREATE TABLE IF NOT EXISTS users.userPic (
 --     TABLESPACE pg_default;
 
 ALTER TABLE users.userPic
-    OWNER to admin;
+    OWNER to csye6225;
