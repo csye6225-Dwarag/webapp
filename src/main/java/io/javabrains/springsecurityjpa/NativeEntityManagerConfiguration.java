@@ -17,7 +17,7 @@ import javax.sql.DataSource;
 @EnableJpaRepositories(
         basePackages = "io.javabrains.springsecurityjpa",
         excludeFilters = @ComponentScan.Filter(ReadReplicaOnlyRepository.class),
-        entityManagerFactoryRef = "nativeEntityManagerFactory"
+        entityManagerFactoryRef = "entityManagerFactory"
 )
 public class NativeEntityManagerConfiguration {
     @Value("${spring.datasource.username}")
@@ -42,7 +42,7 @@ public class NativeEntityManagerConfiguration {
 
     @Bean
     @Primary
-    public LocalContainerEntityManagerFactoryBean nativeEntityManagerFactory(
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             EntityManagerFactoryBuilder builder,
             @Qualifier("dataSource") DataSource dataSource) {
         return builder.dataSource(dataSource)
