@@ -22,6 +22,8 @@ public class User {
     private String password;
     private String firstName;
     private String lastName;
+
+    @Column(name="accountcreated")
     private Timestamp accountCreated;
     private Timestamp accountUpdated;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
