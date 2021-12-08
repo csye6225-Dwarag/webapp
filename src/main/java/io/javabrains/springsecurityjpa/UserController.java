@@ -112,30 +112,46 @@ public class UserController {
 //        boolean userExist = false;
 //        User user = new User();
         logger.info("**********User details method !**********");
-        Session session = DAO.getSessionFactoryReplica().openSession();
-        logger.info("**********Session initialized !**********");
-        List<User> result = session.createQuery("from User").list();
-        logger.info("**********User create query result !**********");
-        session.getTransaction().commit();
-        logger.info("**********session transaction commit !**********");
-        long end = System.currentTimeMillis();
-        long dbTimeElapsed = end - start;
-        long timeElapsed = end - start;
-        statsd.recordExecutionTime("GetUserFromDBTime", dbTimeElapsed);
-        statsd.recordExecutionTime("GetUserDetailsApiTime", timeElapsed);
-        logger.info("**********User details fetched successfully !**********");
-        session.close();
-        logger.info("**********session closed !**********");
-        for (User user : result) {
-            if (user.getUserName().equalsIgnoreCase(authentication.getName())) {
-                if (user.isVerified()) {
-                    return ResponseEntity.ok(user);
-                } else {
-                    return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+        try {
+            Session session = DAO.getSessionFactoryReplica().openSession();
+            logger.info("**********Session initialized !**********");
+            List<User> result = session.createQuery("from User").list();
+            logger.info("**********User create query result !**********");
+            session.getTransaction().commit();
+            logger.info("**********session transaction commit !**********");
+            long end = System.currentTimeMillis();
+            long dbTimeElapsed = end - start;
+            long timeElapsed = end - start;
+            statsd.recordExecutionTime("GetUserFromDBTime", dbTimeElapsed);
+            statsd.recordExecutionTime("GetUserDetailsApiTime", timeElapsed);
+            logger.info("**********User details fetched successfully !**********");
+            session.close();
+            logger.info("**********session closed !**********");
+            for (User user : result) {
+                if (user.getUserName().equalsIgnoreCase(authentication.getName())) {
+                    if (user.isVerified()) {
+                        return ResponseEntity.ok(user);
+                    } else {
+                        return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+                    }
                 }
             }
+            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+        } catch (Exception e){
+            User user = userRepository.findByUserName(authentication.getName())
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+            long end = System.currentTimeMillis();
+            long dbTimeElapsed = end - start;
+            long timeElapsed = end - start;
+            statsd.recordExecutionTime("GetUserFromDBTime", dbTimeElapsed);
+            statsd.recordExecutionTime("GetUserDetailsApiTime", timeElapsed);
+            logger.info("**********User details fetched successfully !**********");
+            if(user.isVerified()){
+                return ResponseEntity.ok(user);
+            }else{
+                return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+            }
         }
-        return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
     }
 
     // build update user REST API
@@ -153,7 +169,7 @@ public class UserController {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
                 }
 
-                if (userDetails.getAccountCreated() != null) {
+                if (userDetails.getAccount_created() != null) {
                     logger.info("**********Cannot Update Account Created details ! **********");
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
                 }
@@ -374,7 +390,7 @@ public class UserController {
     public static boolean saveDetail(User newUser, UserRepository userRepository, long start, StatsDClient statsd) {
         try {
             newUser.setId(UUID.randomUUID());
-            newUser.setAccountCreated(new Timestamp(System.currentTimeMillis()));
+            newUser.setAccount_created(new Timestamp(System.currentTimeMillis()));
             newUser.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
             newUser.setActive(true);
             // System.out.println(System.currentTimeMillis());

@@ -37,6 +37,7 @@ public class DAO
         final Configuration cfgReplica = new Configuration();
         String connection_url = System.getenv("host1")+"?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC";
         cfgReplica.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL5Dialect");
+//        cfgReplica.setProperty("hibernate.naming-strategy", "org.hibernate.cfg.ImprovedNamingStrategy");
         cfgReplica.setProperty("hibernate.connection.driver_class", "com.mysql.cj.jdbc.Driver");
         cfgReplica.setProperty("hibernate.connection.url", connection_url);
         cfgReplica.setProperty("hibernate.connection.username", System.getenv("username"));

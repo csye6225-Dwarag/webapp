@@ -23,7 +23,7 @@ public class User {
     private String firstName;
     private String lastName;
 
-    private Timestamp accountCreated;
+    private Timestamp account_created;
     private Timestamp accountUpdated;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private boolean active = true;
@@ -100,13 +100,21 @@ public class User {
         this.lastName = lastName;
     }
 
-    public Timestamp getAccountCreated() {
-        return accountCreated;
+    public Timestamp getAccount_created() {
+        return account_created;
     }
 
-    public void setAccountCreated(Timestamp account_created) {
-        this.accountCreated = account_created;
+    public void setAccount_created(Timestamp account_created) {
+        this.account_created = account_created;
     }
+
+//    public Timestamp getAccountCreated() {
+//        return accountCreated;
+//    }
+//
+//    public void setAccountCreated(Timestamp account_created) {
+//        this.accountCreated = account_created;
+//    }
 
     public Timestamp getAccountUpdated() {
         return accountUpdated;
