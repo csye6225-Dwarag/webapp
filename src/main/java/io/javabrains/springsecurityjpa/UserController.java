@@ -151,6 +151,7 @@ public class UserController {
 //            }else{
 //                return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
 //            }
+            logger.info(e.getMessage());
             logger.info(e.getStackTrace().toString());
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
