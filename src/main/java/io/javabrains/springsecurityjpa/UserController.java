@@ -138,19 +138,21 @@ public class UserController {
             }
             return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
         } catch (Exception e){
-            User user = userRepository.findByUserName(authentication.getName())
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
-            long end = System.currentTimeMillis();
-            long dbTimeElapsed = end - start;
-            long timeElapsed = end - start;
-            statsd.recordExecutionTime("GetUserFromDBTime", dbTimeElapsed);
-            statsd.recordExecutionTime("GetUserDetailsApiTime", timeElapsed);
-            logger.info("**********User details fetched successfully !**********");
-            if(user.isVerified()){
-                return ResponseEntity.ok(user);
-            }else{
-                return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
-            }
+//            User user = userRepository.findByUserName(authentication.getName())
+//                    .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+//            long end = System.currentTimeMillis();
+//            long dbTimeElapsed = end - start;
+//            long timeElapsed = end - start;
+//            statsd.recordExecutionTime("GetUserFromDBTime", dbTimeElapsed);
+//            statsd.recordExecutionTime("GetUserDetailsApiTime", timeElapsed);
+//            logger.info("**********User details fetched successfully !**********");
+//            if(user.isVerified()){
+//                return ResponseEntity.ok(user);
+//            }else{
+//                return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+//            }
+            logger.info(e.getStackTrace().toString());
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -174,7 +176,7 @@ public class UserController {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
                 }
 
-                if (userDetails.getAccountUpdated() != null) {
+                if (userDetails.getAccount_updated() != null) {
                     logger.info("**********Cannot Update Account Updated details ! **********");
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
                 }
@@ -185,11 +187,11 @@ public class UserController {
                     String password = userDetails.getPassword();
                     BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
                     userDetails.setPassword(bCryptPasswordEncoder.encode(password));
-                    userDetails.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
+                    userDetails.setAccount_updated(new Timestamp(System.currentTimeMillis()));
                     //System.out.println(">>>>>>>>>>>>>>>>>Pass -" + userDetails.getPassword());
                     long dbStart = System.currentTimeMillis();
                     userRepository.updateUser(authentication.getName(), userDetails.getFirstName(),
-                            userDetails.getLastName(), userDetails.getPassword(), userDetails.getAccountUpdated());
+                            userDetails.getLastName(), userDetails.getPassword(), userDetails.getAccount_updated());
                     long end = System.currentTimeMillis();
                     long dbTimeElapsed = end - dbStart;
                     long timeElapsed = end - start;
@@ -200,12 +202,12 @@ public class UserController {
                 }
 
                 if (userDetails.getFirstName() != null && !userDetails.getFirstName().isEmpty()) {
-                    userDetails.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
-                    userRepository.updateUserFirstName(authentication.getName(), userDetails.getFirstName(), userDetails.getAccountUpdated());
+                    userDetails.setAccount_updated(new Timestamp(System.currentTimeMillis()));
+                    userRepository.updateUserFirstName(authentication.getName(), userDetails.getFirstName(), userDetails.getAccount_updated());
                 }
                 if (userDetails.getLastName() != null && !userDetails.getLastName().isEmpty()) {
-                    userDetails.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
-                    userRepository.updateUserLastName(authentication.getName(), userDetails.getLastName(), userDetails.getAccountUpdated());
+                    userDetails.setAccount_updated(new Timestamp(System.currentTimeMillis()));
+                    userRepository.updateUserLastName(authentication.getName(), userDetails.getLastName(), userDetails.getAccount_updated());
                 }
 
                 if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
@@ -213,7 +215,7 @@ public class UserController {
                     BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
                     userDetails.setPassword(bCryptPasswordEncoder.encode(password));
                     //System.out.println(">>>>>>>>>>>>>>>>>Pass -" + userDetails.getPassword());
-                    userRepository.updateUserPassword(authentication.getName(), userDetails.getPassword(), userDetails.getAccountUpdated());
+                    userRepository.updateUserPassword(authentication.getName(), userDetails.getPassword(), userDetails.getAccount_updated());
                 }
                 return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
             } else {
@@ -391,7 +393,7 @@ public class UserController {
         try {
             newUser.setId(UUID.randomUUID());
             newUser.setAccount_created(new Timestamp(System.currentTimeMillis()));
-            newUser.setAccountUpdated(new Timestamp(System.currentTimeMillis()));
+            newUser.setAccount_updated(new Timestamp(System.currentTimeMillis()));
             newUser.setActive(true);
             // System.out.println(System.currentTimeMillis());
             long dbStart = System.currentTimeMillis();

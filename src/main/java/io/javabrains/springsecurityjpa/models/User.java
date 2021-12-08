@@ -24,7 +24,7 @@ public class User {
     private String lastName;
 
     private Timestamp account_created;
-    private Timestamp accountUpdated;
+    private Timestamp account_updated;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private boolean active = true;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
@@ -116,13 +116,22 @@ public class User {
 //        this.accountCreated = account_created;
 //    }
 
-    public Timestamp getAccountUpdated() {
-        return accountUpdated;
+
+    public Timestamp getAccount_updated() {
+        return account_updated;
     }
 
-    public void setAccountUpdated(Timestamp account_updated) {
-        this.accountUpdated = account_updated;
+    public void setAccount_updated(Timestamp account_updated) {
+        this.account_updated = account_updated;
     }
+
+//    public Timestamp getAccountUpdated() {
+//        return accountUpdated;
+//    }
+//
+//    public void setAccountUpdated(Timestamp account_updated) {
+//        this.accountUpdated = account_updated;
+//    }
 
     public boolean isActive() {
         return active;
