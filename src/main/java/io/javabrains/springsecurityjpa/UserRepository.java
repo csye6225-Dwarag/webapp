@@ -21,27 +21,27 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     @Transactional
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE User SET firstName= :fName, lastName= :lName, password=:password, accountUpdated=:accountUpdated WHERE userName in :email")
+    @Query("UPDATE User SET first_name= :fName, last_name= :lName, password=:password, account_updated=:accountUpdated WHERE userName in :email")
     public int updateUser(@Param(value = "email") String email, @Param("fName") String fName, @Param("lName") String LName,
                           @Param("password") String password, @Param("accountUpdated") Timestamp accountUpdated);
 
     @Transactional
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE User SET firstName= :fName, accountUpdated=:accountUpdated WHERE userName in :email")
+    @Query("UPDATE User SET first_name= :fName, account_updated=:accountUpdated WHERE userName in :email")
     public int updateUserFirstName(@Param(value = "email") String email, @Param("fName") String fName, @Param("accountUpdated") Timestamp accountUpdated);
 
     @Transactional
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE User SET lastName= :lName, accountUpdated=:accountUpdated WHERE userName in :email")
+    @Query("UPDATE User SET last_name= :lName, account_updated=:accountUpdated WHERE userName in :email")
     public int updateUserLastName(@Param(value = "email") String email, @Param("lName") String lName, @Param("accountUpdated") Timestamp accountUpdated);
 
     @Transactional
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE User SET password=:password, accountUpdated=:accountUpdated WHERE userName in :email")
+    @Query("UPDATE User SET password=:password, account_updated=:accountUpdated WHERE userName in :email")
     public int updateUserPassword(@Param(value = "email") String email, @Param("password") String password, @Param("accountUpdated") Timestamp accountUpdated);
 
     @Transactional
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE User SET verified= :verified, verifiedOn= :verifiedOn, accountUpdated=:accountUpdated WHERE userName in :email")
+    @Query("UPDATE User SET verified= :verified, verified_on= :verifiedOn, account_updated=:accountUpdated WHERE userName in :email")
     public int updateUserVerified(@Param(value = "email") String email, @Param("verified") boolean verified, @Param("verifiedOn") Timestamp verifiedOn, @Param("accountUpdated") Timestamp accountUpdated);
 }
