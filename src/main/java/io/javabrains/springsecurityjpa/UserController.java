@@ -117,9 +117,6 @@ public class UserController {
             logger.info("**********Session initialized !**********");
             List<User> result = session.createQuery("from User").list();
             logger.info("**********User create query result !**********");
-//            if (!session.beginTransaction()..wasCommitted())
-//                tx.commit();
-//            session.getTransaction().commit();
             logger.info("**********session transaction commit !**********");
             long end = System.currentTimeMillis();
             long dbTimeElapsed = end - start;
@@ -140,19 +137,6 @@ public class UserController {
             }
             return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
         } catch (Exception e){
-//            User user = userRepository.findByUserName(authentication.getName())
-//                    .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
-//            long end = System.currentTimeMillis();
-//            long dbTimeElapsed = end - start;
-//            long timeElapsed = end - start;
-//            statsd.recordExecutionTime("GetUserFromDBTime", dbTimeElapsed);
-//            statsd.recordExecutionTime("GetUserDetailsApiTime", timeElapsed);
-//            logger.info("**********User details fetched successfully !**********");
-//            if(user.isVerified()){
-//                return ResponseEntity.ok(user);
-//            }else{
-//                return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
-//            }
             logger.info(e.getMessage());
             logger.info(e.getStackTrace().toString());
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -210,7 +194,7 @@ public class UserController {
                 }
                 if (userDetails.getLast_name() != null && !userDetails.getLast_name().isEmpty()) {
                     userDetails.setAccount_updated(new Timestamp(System.currentTimeMillis()));
-                    userRepository.updateUserLastName(authentication.getName(), userDetails.getFirst_name(), userDetails.getAccount_updated());
+                    userRepository.updateUserLastName(authentication.getName(), userDetails.getLast_name(), userDetails.getAccount_updated());
                 }
 
                 if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
@@ -493,6 +477,40 @@ public class UserController {
         return new Date().getTime() + "-image.jpeg";
     }
 
+//    @GetMapping("/v1/user/self/pic")
+//    public ResponseEntity getPic(Authentication authentication){
+//        User user = userRepository.findByUserName(authentication.getName())
+//                .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+//        userRepository.flush();
+//        if (user.isVerified()) {
+//            statsd.incrementCounter("GetUserPicAPI");
+//            long start = System.currentTimeMillis();
+//            try {
+//                UserPic picData = imageRepository.findByUserId(user.getId().toString());
+//                if (picData != null) {
+//                    long end = System.currentTimeMillis();
+//                    long timeElapsed = end - start;
+//                    statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+//                    logger.info("**********Image Retrieved from S3 bucket successfully**********");
+//                    return new ResponseEntity<>(picData, HttpStatus.OK);
+//                }
+//                long end = System.currentTimeMillis();
+//                long timeElapsed = end - start;
+//                statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+//                logger.info("**********Image Not Found in S3 bucket **********");
+//                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+//            } catch (Exception e) {
+//                long end = System.currentTimeMillis();
+//                long timeElapsed = end - start;
+//                statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+//                logger.info("**********Error while Retrieving Image from S3 bucket **********");
+//                return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+//            }
+//        } else {
+//            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+//        }
+//    }
+
     @GetMapping("/v1/user/self/pic")
     public ResponseEntity getPic(Authentication authentication){
         User user = userRepository.findByUserName(authentication.getName())
@@ -502,16 +520,28 @@ public class UserController {
             statsd.incrementCounter("GetUserPicAPI");
             long start = System.currentTimeMillis();
             try {
-                UserPic picData = imageRepository.findByUserId(user.getId().toString());
-                if (picData != null) {
-                    long end = System.currentTimeMillis();
-                    long timeElapsed = end - start;
-                    statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-                    logger.info("**********Image Retrieved from S3 bucket successfully**********");
-                    return new ResponseEntity<>(picData, HttpStatus.OK);
-                }
+                Session session = DAO.getSessionFactoryReplica().openSession();
+                logger.info("**********Pic Session initialized !**********");
+                List<UserPic> result = session.createQuery("from UserPic ").list();
+                logger.info("**********UserPic create query result !**********");
+                logger.info("**********session transaction commit !**********");
                 long end = System.currentTimeMillis();
+                long dbTimeElapsed = end - start;
                 long timeElapsed = end - start;
+                statsd.recordExecutionTime("GetUserPicFromDBTime", dbTimeElapsed);
+                session.close();
+                logger.info("**********session closed !**********");
+                statsd.recordExecutionTime("GetUserPicDetailsApiTime", timeElapsed);
+                logger.info("**********User details fetched successfully !**********");
+                for (UserPic userPic : result) {
+                    if (userPic.getUser_id().equalsIgnoreCase(user.getId().toString())) {
+                        statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+                        logger.info("**********Image Retrieved from S3 bucket successfully**********");
+                        return new ResponseEntity<>(userPic, HttpStatus.OK);
+                    }
+                }
+                end = System.currentTimeMillis();
+                timeElapsed = end - start;
                 statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
                 logger.info("**********Image Not Found in S3 bucket **********");
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
