@@ -181,8 +181,8 @@ public class UserController {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
                 }
 
-                if ((userDetails.getFirstName() != null && !userDetails.getFirstName().isEmpty())
-                        && (userDetails.getLastName() != null && !userDetails.getLastName().isEmpty()) &&
+                if ((userDetails.getFirst_name() != null && !userDetails.getFirst_name().isEmpty())
+                        && (userDetails.getLast_name() != null && !userDetails.getLast_name().isEmpty()) &&
                         (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty())) {
                     String password = userDetails.getPassword();
                     BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
@@ -190,8 +190,8 @@ public class UserController {
                     userDetails.setAccount_updated(new Timestamp(System.currentTimeMillis()));
                     //System.out.println(">>>>>>>>>>>>>>>>>Pass -" + userDetails.getPassword());
                     long dbStart = System.currentTimeMillis();
-                    userRepository.updateUser(authentication.getName(), userDetails.getFirstName(),
-                            userDetails.getLastName(), userDetails.getPassword(), userDetails.getAccount_updated());
+                    userRepository.updateUser(authentication.getName(), userDetails.getFirst_name(),
+                            userDetails.getLast_name(), userDetails.getPassword(), userDetails.getAccount_updated());
                     long end = System.currentTimeMillis();
                     long dbTimeElapsed = end - dbStart;
                     long timeElapsed = end - start;
@@ -201,13 +201,13 @@ public class UserController {
                     return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
                 }
 
-                if (userDetails.getFirstName() != null && !userDetails.getFirstName().isEmpty()) {
+                if (userDetails.getFirst_name() != null && !userDetails.getFirst_name().isEmpty()) {
                     userDetails.setAccount_updated(new Timestamp(System.currentTimeMillis()));
-                    userRepository.updateUserFirstName(authentication.getName(), userDetails.getFirstName(), userDetails.getAccount_updated());
+                    userRepository.updateUserFirstName(authentication.getName(), userDetails.getFirst_name(), userDetails.getAccount_updated());
                 }
-                if (userDetails.getLastName() != null && !userDetails.getLastName().isEmpty()) {
+                if (userDetails.getLast_name() != null && !userDetails.getLast_name().isEmpty()) {
                     userDetails.setAccount_updated(new Timestamp(System.currentTimeMillis()));
-                    userRepository.updateUserLastName(authentication.getName(), userDetails.getLastName(), userDetails.getAccount_updated());
+                    userRepository.updateUserLastName(authentication.getName(), userDetails.getFirst_name(), userDetails.getAccount_updated());
                 }
 
                 if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
@@ -297,7 +297,7 @@ public class UserController {
             BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
             newUser.setPassword(bCryptPasswordEncoder.encode(newUser.getPassword()));
             newUser.setVerified(false);
-            newUser.setVerifiedOn(new Timestamp(System.currentTimeMillis()));
+            newUser.setVerified_on(new Timestamp(System.currentTimeMillis()));
             if (saveDetail(newUser, userRepository, start, statsd)) {
                 User user = userRepository.findByUserName(newUser.getUserName())
                         .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + newUser.getUserName()));
