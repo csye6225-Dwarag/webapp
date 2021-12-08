@@ -56,22 +56,22 @@ public class ReplicaEntityManagerConfiguration {
 
     }
 
-    @Bean
-    public LocalContainerEntityManagerFactoryBean readReplicaEntityManagerFactory(
-            EntityManagerFactoryBuilder builder,
-            @Qualifier("readDataSource") DataSource dataSource) {
-        try {
-            logger.info("**********Replica Entity Manager !**********");
-            return builder.dataSource(dataSource)
-                    .packages("io.javabrains.springsecurityjpa")
-                    .persistenceUnit("read")
-                    .build();
-        } catch (Exception e){
-            logger.info("**********Replica Entity Manager Error!**********");
-            return builder.dataSource(dataSource)
-                    .packages("io.javabrains.springsecurityjpa")
-                    .persistenceUnit("read")
-                    .build();
-        }
-    }
+//    @Bean
+//    public LocalContainerEntityManagerFactoryBean readReplicaEntityManagerFactory(
+//            EntityManagerFactoryBuilder builder,
+//            @Qualifier("readDataSource") DataSource dataSource) {
+//        try {
+//            logger.info("**********Replica Entity Manager !**********");
+//            return builder.dataSource(dataSource)
+//                    .packages("io.javabrains.springsecurityjpa")
+//                    .persistenceUnit("read")
+//                    .build();
+//        } catch (Exception e){
+//            logger.info("**********Replica Entity Manager Error!**********");
+//            return builder.dataSource(dataSource)
+//                    .packages("io.javabrains.springsecurityjpa")
+//                    .persistenceUnit("read")
+//                    .build();
+//        }
+//    }
 }
