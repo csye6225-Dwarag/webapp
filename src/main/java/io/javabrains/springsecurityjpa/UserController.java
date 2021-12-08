@@ -42,8 +42,8 @@ public class UserController {
     @Autowired
     private final ImageRepository imageRepository;
 
-//    @Autowired
-//    private final UserReadReplicaOnlyRepository userReadReplicaOnlyRepository;
+    @Autowired
+    private final UserReadReplicaOnlyRepository userReadReplicaOnlyRepository;
 //
 //    @Autowired
 //    private final ImageReadReplicaOnlyRepository imageReadReplicaOnlyRepository;
@@ -68,11 +68,11 @@ public class UserController {
     @Value("${bucketName}")
     private String bucket;
 
-    public UserController(UserRepository userRepository, ImageRepository imageRepository) {
+    public UserController(UserRepository userRepository, ImageRepository imageRepository, UserReadReplicaOnlyRepository userReadReplicaOnlyRepository) {
         this.userRepository = userRepository;
         this.imageRepository = imageRepository;
-//        this.userReadReplicaOnlyRepository = userReadReplicaOnlyRepository;
 //        this.imageReadReplicaOnlyRepository = imageReadReplicaOnlyRepository;
+        this.userReadReplicaOnlyRepository = userReadReplicaOnlyRepository;
     }
     //private String bucketURL="https://s3.console.aws.amazon.com/s3/buckets/csye6225.prod.domain.tld?region=us-east-1&tab=objects";
 
@@ -88,7 +88,7 @@ public class UserController {
     public ResponseEntity<User> user(Authentication authentication) {
         statsd.incrementCounter("GetUserDetailsApi");
         long start = System.currentTimeMillis();
-        User user = userRepository.findByUserName(authentication.getName())
+        User user = userReadReplicaOnlyRepository.findByUserName(authentication.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
         long end = System.currentTimeMillis();
         long dbTimeElapsed = end - start;
