@@ -477,40 +477,6 @@ public class UserController {
         return new Date().getTime() + "-image.jpeg";
     }
 
-//    @GetMapping("/v1/user/self/pic")
-//    public ResponseEntity getPic(Authentication authentication){
-//        User user = userRepository.findByUserName(authentication.getName())
-//                .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
-//        userRepository.flush();
-//        if (user.isVerified()) {
-//            statsd.incrementCounter("GetUserPicAPI");
-//            long start = System.currentTimeMillis();
-//            try {
-//                UserPic picData = imageRepository.findByUserId(user.getId().toString());
-//                if (picData != null) {
-//                    long end = System.currentTimeMillis();
-//                    long timeElapsed = end - start;
-//                    statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-//                    logger.info("**********Image Retrieved from S3 bucket successfully**********");
-//                    return new ResponseEntity<>(picData, HttpStatus.OK);
-//                }
-//                long end = System.currentTimeMillis();
-//                long timeElapsed = end - start;
-//                statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-//                logger.info("**********Image Not Found in S3 bucket **********");
-//                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-//            } catch (Exception e) {
-//                long end = System.currentTimeMillis();
-//                long timeElapsed = end - start;
-//                statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-//                logger.info("**********Error while Retrieving Image from S3 bucket **********");
-//                return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
-//            }
-//        } else {
-//            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
-//        }
-//    }
-
     @GetMapping("/v1/user/self/pic")
     public ResponseEntity getPic(Authentication authentication){
         User user = userRepository.findByUserName(authentication.getName())
@@ -520,28 +486,16 @@ public class UserController {
             statsd.incrementCounter("GetUserPicAPI");
             long start = System.currentTimeMillis();
             try {
-                Session session = DAO.getSessionFactoryReplica().openSession();
-                logger.info("**********Pic Session initialized !**********");
-                List<UserPic> result = session.createQuery("from UserPic ").list();
-                logger.info("**********UserPic create query result !**********");
-                logger.info("**********session transaction commit !**********");
-                long end = System.currentTimeMillis();
-                long dbTimeElapsed = end - start;
-                long timeElapsed = end - start;
-                statsd.recordExecutionTime("GetUserPicFromDBTime", dbTimeElapsed);
-                session.close();
-                logger.info("**********session closed !**********");
-                statsd.recordExecutionTime("GetUserPicDetailsApiTime", timeElapsed);
-                logger.info("**********User details fetched successfully !**********");
-                for (UserPic userPic : result) {
-                    if (userPic.getUser_id().equalsIgnoreCase(user.getId().toString())) {
-                        statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
-                        logger.info("**********Image Retrieved from S3 bucket successfully**********");
-                        return new ResponseEntity<>(userPic, HttpStatus.OK);
-                    }
+                UserPic picData = imageRepository.findByUserId(user.getId().toString());
+                if (picData != null) {
+                    long end = System.currentTimeMillis();
+                    long timeElapsed = end - start;
+                    statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+                    logger.info("**********Image Retrieved from S3 bucket successfully**********");
+                    return new ResponseEntity<>(picData, HttpStatus.OK);
                 }
-                end = System.currentTimeMillis();
-                timeElapsed = end - start;
+                long end = System.currentTimeMillis();
+                long timeElapsed = end - start;
                 statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
                 logger.info("**********Image Not Found in S3 bucket **********");
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -556,6 +510,52 @@ public class UserController {
             return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
         }
     }
+
+//    @GetMapping("/v1/user/self/pic")
+//    public ResponseEntity getPic(Authentication authentication){
+//        User user = userRepository.findByUserName(authentication.getName())
+//                .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+//        userRepository.flush();
+//        if (user.isVerified()) {
+//            statsd.incrementCounter("GetUserPicAPI");
+//            long start = System.currentTimeMillis();
+//            try {
+//                Session session = DAO.getSessionFactoryReplica().openSession();
+//                logger.info("**********Pic Session initialized !**********");
+//                List<UserPic> result = session.createQuery("from UserPic ").list();
+//                logger.info("**********UserPic create query result !**********");
+//                logger.info("**********session transaction commit !**********");
+//                long end = System.currentTimeMillis();
+//                long dbTimeElapsed = end - start;
+//                long timeElapsed = end - start;
+//                statsd.recordExecutionTime("GetUserPicFromDBTime", dbTimeElapsed);
+//                session.close();
+//                logger.info("**********session closed !**********");
+//                statsd.recordExecutionTime("GetUserPicDetailsApiTime", timeElapsed);
+//                logger.info("**********User details fetched successfully !**********");
+//                for (UserPic userPic : result) {
+//                    if (userPic.getUser_id().equalsIgnoreCase(user.getId().toString())) {
+//                        statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+//                        logger.info("**********Image Retrieved from S3 bucket successfully**********");
+//                        return new ResponseEntity<>(userPic, HttpStatus.OK);
+//                    }
+//                }
+//                end = System.currentTimeMillis();
+//                timeElapsed = end - start;
+//                statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+//                logger.info("**********Image Not Found in S3 bucket **********");
+//                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+//            } catch (Exception e) {
+//                long end = System.currentTimeMillis();
+//                long timeElapsed = end - start;
+//                statsd.recordExecutionTime("insertImageToS3ApiTime", timeElapsed);
+//                logger.info("**********Error while Retrieving Image from S3 bucket **********");
+//                return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+//            }
+//        } else {
+//            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+//        }
+//    }
 
     @DeleteMapping("/v1/user/self/pic")
     public ResponseEntity deletePic(Authentication authentication) {
