@@ -1,5 +1,6 @@
 package io.javabrains.springsecurityjpa;
 
+import org.hibernate.Session;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
@@ -42,8 +43,8 @@ public class UserController {
     @Autowired
     private final ImageRepository imageRepository;
 
-    @Autowired
-    private final UserReadReplicaOnlyRepository userReadReplicaOnlyRepository;
+//    @Autowired
+//    private final UserReadReplicaOnlyRepository userReadReplicaOnlyRepository;
 //
 //    @Autowired
 //    private final ImageReadReplicaOnlyRepository imageReadReplicaOnlyRepository;
@@ -68,11 +69,11 @@ public class UserController {
     @Value("${bucketName}")
     private String bucket;
 
-    public UserController(UserRepository userRepository, ImageRepository imageRepository, UserReadReplicaOnlyRepository userReadReplicaOnlyRepository) {
+    public UserController(UserRepository userRepository, ImageRepository imageRepository) {
         this.userRepository = userRepository;
         this.imageRepository = imageRepository;
 //        this.imageReadReplicaOnlyRepository = imageReadReplicaOnlyRepository;
-        this.userReadReplicaOnlyRepository = userReadReplicaOnlyRepository;
+//        this.userReadReplicaOnlyRepository = userReadReplicaOnlyRepository;
     }
     //private String bucketURL="https://s3.console.aws.amazon.com/s3/buckets/csye6225.prod.domain.tld?region=us-east-1&tab=objects";
 
@@ -84,24 +85,57 @@ public class UserController {
 //        return ("<h1>Welcome</h1>");
 //    }
 
+//    @GetMapping("/v1/user/self")
+//    public ResponseEntity<User> user(Authentication authentication) {
+//        statsd.incrementCounter("GetUserDetailsApi");
+//        long start = System.currentTimeMillis();
+//        User user = userRepository.findByUserName(authentication.getName())
+//                .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+//        long end = System.currentTimeMillis();
+//        long dbTimeElapsed = end - start;
+//        long timeElapsed = end - start;
+//        statsd.recordExecutionTime("GetUserFromDBTime", dbTimeElapsed);
+//        statsd.recordExecutionTime("GetUserDetailsApiTime", timeElapsed);
+//        logger.info("**********User details fetched successfully !**********");
+//        if(user.isVerified()){
+//            return ResponseEntity.ok(user);
+//        }else{
+//            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+//        }
+//
+//    }
+
     @GetMapping("/v1/user/self")
     public ResponseEntity<User> user(Authentication authentication) {
         statsd.incrementCounter("GetUserDetailsApi");
         long start = System.currentTimeMillis();
-        User user = userReadReplicaOnlyRepository.findByUserName(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + authentication.getName()));
+//        boolean userExist = false;
+//        User user = new User();
+        logger.info("**********User details method !**********");
+        Session session = DAO.getSessionFactoryReplica().openSession();
+        logger.info("**********Session initialized !**********");
+        List<User> result = session.createQuery("from User").list();
+        logger.info("**********User create query result !**********");
+        session.getTransaction().commit();
+        logger.info("**********session transaction commit !**********");
         long end = System.currentTimeMillis();
         long dbTimeElapsed = end - start;
         long timeElapsed = end - start;
         statsd.recordExecutionTime("GetUserFromDBTime", dbTimeElapsed);
         statsd.recordExecutionTime("GetUserDetailsApiTime", timeElapsed);
         logger.info("**********User details fetched successfully !**********");
-        if(user.isVerified()){
-            return ResponseEntity.ok(user);
-        }else{
-            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+        session.close();
+        logger.info("**********session closed !**********");
+        for (User user : result) {
+            if (user.getUserName().equalsIgnoreCase(authentication.getName())) {
+                if (user.isVerified()) {
+                    return ResponseEntity.ok(user);
+                } else {
+                    return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+                }
+            }
         }
-
+        return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
     }
 
     // build update user REST API
