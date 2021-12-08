@@ -117,7 +117,9 @@ public class UserController {
             logger.info("**********Session initialized !**********");
             List<User> result = session.createQuery("from User").list();
             logger.info("**********User create query result !**********");
-            session.getTransaction().commit();
+//            if (!session.beginTransaction()..wasCommitted())
+//                tx.commit();
+//            session.getTransaction().commit();
             logger.info("**********session transaction commit !**********");
             long end = System.currentTimeMillis();
             long dbTimeElapsed = end - start;
