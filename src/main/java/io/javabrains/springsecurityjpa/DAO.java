@@ -28,7 +28,7 @@ public class DAO
         cfgReplica.setProperty("hibernate.connection.username", System.getenv("username"));
         cfgReplica.setProperty("hibernate.connection.password", System.getenv("password"));
         cfgReplica.setProperty("hibernate.show_sql", "true");
-        cfgReplica.addAnnotatedClass(UserPic.class);
+//        cfgReplica.addAnnotatedClass(UserPic.class);
         cfgReplica.addAnnotatedClass(User.class);
         sessionFactoryReplica = cfgReplica.buildSessionFactory();
     }
