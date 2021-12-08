@@ -20,8 +20,8 @@ public class User {
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
-    private String firstName;
-    private String lastName;
+    private String first_name;
+    private String last_name;
 
     private Timestamp account_created;
     private Timestamp account_updated;
@@ -30,26 +30,26 @@ public class User {
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String roles;
     private boolean verified;
-    private Timestamp verifiedOn;
+    private Timestamp verified_on;
 
     public User(String userName, String password, String firstName, String lastName){
         this.id = UUID.randomUUID();
         this.userName = userName;
         this.password = password;
-        this.firstName = firstName;
-        this.lastName = lastName;
+        this.first_name = firstName;
+        this.last_name = lastName;
         this.verified = false;
-        this.verifiedOn = null;
+        this.verified_on = null;
     }
 
     public User(String userName, String password, String firstName, String lastName, Boolean verified, Timestamp verifiedOn){
         this.id = UUID.randomUUID();
         this.userName = userName;
         this.password = password;
-        this.firstName = firstName;
-        this.lastName = lastName;
+        this.first_name = firstName;
+        this.last_name = lastName;
         this.verified = verified;
-        this.verifiedOn = verifiedOn;
+        this.verified_on = verifiedOn;
     }
 
     public User(){
@@ -84,20 +84,28 @@ public class User {
         this.password = password;
     }
 
-    public String getFirstName() {
-        return firstName;
+//    public String getFirstName() {
+//        return firstName;
+//    }
+//
+//    public void setFirstName(String firstName) {
+//        this.firstName = firstName;
+//    }
+
+//    public String getLastName() {
+//        return lastName;
+//    }
+//
+//    public void setLastName(String lastName) {
+//        this.lastName = lastName;
+//    }
+
+    public String getLast_name() {
+        return last_name;
     }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
+    public void setLast_name(String last_name) {
+        this.last_name = last_name;
     }
 
     public Timestamp getAccount_created() {
@@ -108,7 +116,15 @@ public class User {
         this.account_created = account_created;
     }
 
-//    public Timestamp getAccountCreated() {
+    public String getFirst_name() {
+        return first_name;
+    }
+
+    public void setFirst_name(String first_name) {
+        this.first_name = first_name;
+    }
+
+    //    public Timestamp getAccountCreated() {
 //        return accountCreated;
 //    }
 //
@@ -157,13 +173,22 @@ public class User {
         this.verified = verified;
     }
 
-    public Timestamp getVerifiedOn() {
-        return verifiedOn;
+    public Timestamp getVerified_on() {
+        return verified_on;
     }
 
-    public void setVerifiedOn(Timestamp verifiedOn) {
-        this.verifiedOn = verifiedOn;
+    public void setVerified_on(Timestamp verified_on) {
+        this.verified_on = verified_on;
     }
+
+    //
+//    public Timestamp getVerifiedOn() {
+//        return verifiedOn;
+//    }
+//
+//    public void setVerifiedOn(Timestamp verifiedOn) {
+//        this.verifiedOn = verifiedOn;
+//    }
 
 //    public int getVersion() {
 //        return version;
