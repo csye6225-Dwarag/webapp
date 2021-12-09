@@ -277,10 +277,6 @@ public class UserController {
             json.put("AccessToken", token);
             json.put("EmailAddress",newUser.getUserName());
             json.put("MessageType","email");
-            PublishRequest publishReq = new PublishRequest()
-                    .withTopicArn(snstopic)
-                    .withMessage(json.toString());
-            snsClient.publish(publishReq);
             BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
             newUser.setPassword(bCryptPasswordEncoder.encode(newUser.getPassword()));
             newUser.setVerified(false);
@@ -288,6 +284,10 @@ public class UserController {
             if (saveDetail(newUser, userRepository, start, statsd)) {
                 User user = userRepository.findByUserName(newUser.getUserName())
                         .orElseThrow(() -> new ResourceNotFoundException("Employee not exist with id:" + newUser.getUserName()));
+                PublishRequest publishReq = new PublishRequest()
+                        .withTopicArn(snstopic)
+                        .withMessage(json.toString());
+                snsClient.publish(publishReq);
                 long end = System.currentTimeMillis();
                 long timeElapsed = end - start;
                 logger.info("Time taken by save user api call is " + timeElapsed + "ms");
